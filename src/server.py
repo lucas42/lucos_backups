@@ -11,8 +11,17 @@ except ValueError:
 
 class BackupsHandler(BaseHTTPRequestHandler):
 	def do_GET(self):
-		if (self.path == "/_info"):
+		if (self.path == "/"):
+			self.summaryController()
+		elif (self.path == "/lucos_navbar.js"):
+			self.staticFileController("lucos_navbar.js", "text/javascript")
+		elif (self.path == "/style.css"):
+			self.staticFileController("style.css", "text/css")
+		elif (self.path == "/icon.png"):
+			self.staticFileController("icon.png", "image/png")
+		elif (self.path == "/_info"):
 			self.infoController()
+
 		else:
 			self.send_error(404, "Page Not Found")
 		self.wfile.flush()
@@ -20,6 +29,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 	def infoController(self):
 		output = {
 			"system": "lucos_backups",
+			"title": "Backups",
 			"ci": {
 				"circle": "gh/lucas42/lucos_backups",
 			},
@@ -27,13 +37,30 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			},
 			"metrics": {
 			},
+			"icon": "/icon.png",
 			"network_only": True,
-			"show_on_homepage": False,
+			"show_on_homepage": True,
 		}
 		self.send_response(200)
 		self.send_header("Content-type", "application/json")
 		self.end_headers()
 		self.wfile.write(bytes(json.dumps(output, indent="\t")+"\n\n", "utf-8"))
+	def summaryController(self):
+		print(os.getcwd())
+		template = open("resources/summary.html", 'rb')
+		self.send_response(200)
+		self.send_header("Content-type", "text/html")
+		self.end_headers()
+		self.wfile.write(template.read())
+		template.close()
+	def staticFileController(self, filename, contentType):
+		template = open("resources/"+filename, 'rb')
+		self.send_response(200)
+		self.send_header("Content-type", contentType)
+		self.end_headers()
+		self.wfile.write(template.read())
+		template.close()
+
 
 if __name__ == "__main__":
 	server = HTTPServer(('', port), BackupsHandler)
