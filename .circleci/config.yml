@@ -9,7 +9,6 @@ workflows:
       - lucos/build-amd64
       - lucos/deploy-avalon:
           requires:
-            - test
             - lucos/build-amd64
           filters:
             branches:
