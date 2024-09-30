@@ -6,9 +6,9 @@ WORKDIR /usr/src/app
 RUN pip install pipenv
 
 RUN echo "25 3 * * * cd `pwd` && pipenv run python -u do-backups.py >> /var/log/cron.log 2>&1" | crontab -
-COPY startup.sh .
+COPY src/startup.sh .
 
-COPY Pipfile* ./
+COPY src/Pipfile* ./
 RUN pipenv install
 
 COPY src/*.py ./
