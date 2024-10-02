@@ -1,6 +1,7 @@
 #! /usr/local/bin/python3
-import json, sys, os, traceback
+import json, sys, os, traceback, html
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from tracking import fetchAllInfo
 
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")
@@ -46,12 +47,21 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		self.end_headers()
 		self.wfile.write(bytes(json.dumps(output, indent="\t")+"\n\n", "utf-8"))
 	def summaryController(self):
-		print(os.getcwd())
-		template = open("resources/summary.html", 'rb')
+		data = fetchAllInfo()
+		dynamicContent = ""
+		for host, files in data.items():
+			dynamicContent += "<div class=\"host\"><h3>"+html.escape(host)+"</h3><table><thead><td>File Name</td><td>Modification Date</td></thead>"
+			for file in files:
+				dynamicContent += "<tr><td>"+html.escape(file['name'])+"</td><td>"+html.escape(file['date'])+"</td></tr>"
+			if len(files) == 0:
+				dynamicContent += "<tr><td class=\"error\" colspan=\"2\">No Files Found</td></tr>"
+			dynamicContent += "</table></div>"
+		template = open("resources/summary.html", 'r')
+		output = template.read().replace("$$DATA$$", dynamicContent)
 		self.send_response(200)
 		self.send_header("Content-type", "text/html")
 		self.end_headers()
-		self.wfile.write(template.read())
+		self.wfile.write(bytes(output, "utf-8"))
 		template.close()
 	def staticFileController(self, filename, contentType):
 		template = open("resources/"+filename, 'rb')

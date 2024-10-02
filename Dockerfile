@@ -3,6 +3,7 @@ FROM python:3.12-alpine
 
 WORKDIR /usr/src/app
 
+RUN apk add sed
 RUN pip install pipenv
 
 RUN echo "25 3 * * * cd `pwd` && pipenv run python -u do-backups.py >> /var/log/cron.log 2>&1" | crontab -

@@ -8,4 +8,5 @@ services:
         - "8027:8027"
       environment:
         - PORT=8027
+        - SSH_PRIVATE_KEY
       restart: always

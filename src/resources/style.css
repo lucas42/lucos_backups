@@ -1,3 +1,39 @@
+html {
+	height: 100%;
+}
 body {
-	background: repeating-linear-gradient(-57deg, #ccc, #eee 20px, #eeeeef 20px, #aaaaaf 25px);
+	background: repeating-linear-gradient(-40deg, #ccc, #eee 20px, #eeeeef 20px, #aaaaaf 25px);
+	margin: 0;
+	position: absolute;
+	width: 100%;
+}
+main {
+	max-width: 800px;
+	margin: auto;
+}
+.host {
+	background-color: rgba(200, 200, 200, 0.8);
+	padding: 1px 1em 1em;
+	border-radius: 12px;
+	margin: 1em 0.5em;
+}
+
+.host table {
+	width: 100%;
+}
+.host table > tbody td {
+	font-family: monospace;
+	font-weight: bolder;
+}
+.host table > thead td {
+	background: #334;
+	color: #fff;
+	padding: 6px;
+	border-radius: 3px;
+}
+.host table td.error {
+	color: #a00;
+	text-align: center;
+	background-color: rgba(20, 20, 20, 0.15);
+	padding: 10px;
 }
