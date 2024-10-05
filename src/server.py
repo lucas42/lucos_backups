@@ -38,13 +38,11 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			"checks": {
 				"volume-config": {
 					"techDetail": "Whether any volumes found on hosts aren't in volumes.yaml",
-					"ok": (len(data["notInConfig"]) > 0),
-					"debug": "Missing volumes: "+", ".join(data["notInConfig"]),
+					"ok": (len(data["notInConfig"]) == 0),
 				},
 				"volume-host": {
 					"techDetail": "Whether any volumes in volumes.yaml aren't found on at least one host",
-					"ok": (len(data["notOnHost"]) > 0),
-					"debug": "Missing volumes: "+", ".join(data["notOnHost"]),
+					"ok": (len(data["notOnHost"]) == 0),
 				},
 			},
 			"metrics": {
@@ -53,6 +51,10 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			"network_only": True,
 			"show_on_homepage": True,
 		}
+		if not output["checks"]["volume-config"]["ok"]:
+			output["checks"]["volume-config"]["debug"] = "Volumes missing from volumes.yaml: "+", ".join(data["notInConfig"])
+		if not output["checks"]["volume-host"]["ok"]:
+			output["checks"]["volume-host"]["debug"] = "Volumes not found on host: "+", ".join(data["notOnHost"])
 		self.send_response(200)
 		self.send_header("Content-type", "application/json")
 		self.end_headers()

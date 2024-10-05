@@ -52,3 +52,6 @@ volumes:
     pici_docker:
         description: Cache of docker layers etc used when building new images
         effort: automatic
+    lucos_creds_store:
+        description: Credentials used by lucos services.  Both between services within lucos and to third party services.
+        effort: considerable
