@@ -51,6 +51,7 @@ def fetchInfoByHost(host):
 			volume["description"] = "Unknown Volume"
 			volume["effort"] = "unknown"
 		volume["effort label"] = effort_labels[volume["effort"]]
+		volume["project link"] = "https://github.com/lucas42/"+volume['Labels']['com.docker.compose.project']
 		volumes.append(volume)
 	return {
 		"backups": backups,
