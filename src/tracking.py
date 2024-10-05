@@ -59,7 +59,25 @@ def fetchInfoByHost(host):
 	}
 
 def fetchAllInfo():
-	return {
-		"avalon": fetchInfoByHost("avalon.s.l42.eu"),
-		"xwing": fetchInfoByHost("xwing.s.l42.eu"),
+	info = {
+		"hosts": {
+			"avalon": fetchInfoByHost("avalon.s.l42.eu"),
+			"xwing": fetchInfoByHost("xwing.s.l42.eu"),
+		},
+		"notInConfig": [],
+		"notOnHost": [],
 	}
+	allVolumes = info["hosts"]["avalon"]["volumes"] + info["hosts"]["xwing"]["volumes"]
+	for volume in allVolumes:
+		if not volume["known"]:
+			info["notInConfig"].append(volume["Name"])
+	for volumeName in volumesConfig:
+		if not volumeInList(volumeName, allVolumes):
+			info["notOnHost"].append(volumeName)
+	return info
+
+def volumeInList(volumeName, allVolumes):
+	for volume in allVolumes:
+		if volumeName == volume["Name"]:
+			return True
+	return False

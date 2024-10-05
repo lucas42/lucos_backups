@@ -28,6 +28,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		self.wfile.flush()
 		self.connection.close()
 	def infoController(self):
+		data = fetchAllInfo()
 		output = {
 			"system": "lucos_backups",
 			"title": "Backups",
@@ -35,6 +36,16 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				"circle": "gh/lucas42/lucos_backups",
 			},
 			"checks": {
+				"volume-config": {
+					"techDetail": "Whether any volumes found on hosts aren't in volumes.yaml",
+					"ok": (len(data["notInConfig"]) > 0),
+					"debug": "Missing volumes: "+", ".join(data["notInConfig"]),
+				},
+				"volume-host": {
+					"techDetail": "Whether any volumes in volumes.yaml aren't found on at least one host",
+					"ok": (len(data["notOnHost"]) > 0),
+					"debug": "Missing volumes: "+", ".join(data["notOnHost"]),
+				},
 			},
 			"metrics": {
 			},
@@ -49,7 +60,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 	def summaryController(self):
 		data = fetchAllInfo()
 		dynamicContent = ""
-		for host, info in data.items():
+		for host, info in data["hosts"].items():
 			dynamicContent += "<div class=\"host\"><h3>"+html.escape(host)+"</h3><h4>Backup Files</h4><table><thead><td>File Name</td><td>Modification Date</td></thead>"
 			for file in info['backups']:
 				dynamicContent += "<tr><td>"+html.escape(file['name'])+"</td><td>"+html.escape(file['date'])+"</td></tr>"
