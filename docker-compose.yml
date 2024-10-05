@@ -1,12 +1,13 @@
 version: '3'
 services:
-    lucos_backups:
-      build: .
-      container_name: lucos_backups
-      image: lucas42/lucos_backups
-      ports:
-        - "8027:8027"
-      environment:
-        - PORT=8027
-        - SSH_PRIVATE_KEY
-      restart: always
+  lucos_backups:
+    build: .
+    container_name: lucos_backups
+    image: lucas42/lucos_backups
+    ports:
+      - "8027:8027"
+    environment:
+      - PORT=8027
+      - SSH_PRIVATE_KEY
+    restart: always
+    network_mode: host

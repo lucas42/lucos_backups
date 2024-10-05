@@ -63,11 +63,12 @@ def fetchAllInfo():
 		"hosts": {
 			"avalon": fetchInfoByHost("avalon.s.l42.eu"),
 			"xwing": fetchInfoByHost("xwing.s.l42.eu"),
+			"salvare": fetchInfoByHost("salvare.s.l42.eu"),
 		},
 		"notInConfig": [],
 		"notOnHost": [],
 	}
-	allVolumes = info["hosts"]["avalon"]["volumes"] + info["hosts"]["xwing"]["volumes"]
+	allVolumes = info["hosts"]["avalon"]["volumes"] + info["hosts"]["xwing"]["volumes"] + info["hosts"]["salvare"]["volumes"]
 	for volume in allVolumes:
 		if not volume["known"]:
 			info["notInConfig"].append(volume["Name"])
