@@ -16,9 +16,6 @@ volumes:
     lucos_contacts_staticfiles:
         description: Sharing static assets between docker containers
         effort: automatic
-    lucos_dns_dynamicconfig:
-        description: Sharing DNS config between docker containers
-        effort: automatic
     lucos_loganne_state:
         description: Recent event logs
         effort: tolerable
@@ -37,15 +34,6 @@ volumes:
     lucos_schedule_tracker_db:
         description: Recent results of scheduled jobs
         effort: automatic
-    lucos_file_sync_documents-read:
-        description: Not yet properly used
-        effort: tolerable
-    lucos_lanscan_reports:
-        description: No longer used
-        effort: tolerable
-    lucos_media_fixup_media:
-        description: No longer used
-        effort: tolerable
     lucos_media_import_media:
         description: Remote volume on NAS
         effort: automatic
