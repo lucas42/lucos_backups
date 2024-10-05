@@ -31,6 +31,8 @@ else
 	echo "Creating user $USERNAME"
 	ssh -T $HOSTNAME "sudo useradd --system --create-home $USERNAME"
 fi
+echo "Adding $USERNAME to docker group"
+ssh -T $HOSTNAME "sudo usermod -G docker $USERNAME"
 
 echo "Saving public SSH key"
 ssh -T $HOSTNAME "sudo mkdir -p /home/${USERNAME}/.ssh && sudo chown $USERNAME /home/${USERNAME}/.ssh && sudo chmod 700 /home/${USERNAME}/.ssh"

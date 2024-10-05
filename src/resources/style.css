@@ -1,11 +1,5 @@
 html {
-	height: 100%;
-}
-body {
 	background: repeating-linear-gradient(-40deg, #ccc, #eee 20px, #eeeeef 20px, #aaaaaf 25px);
-	margin: 0;
-	position: absolute;
-	width: 100%;
 }
 main {
 	max-width: 800px;

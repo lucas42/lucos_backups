@@ -49,12 +49,18 @@ class BackupsHandler(BaseHTTPRequestHandler):
 	def summaryController(self):
 		data = fetchAllInfo()
 		dynamicContent = ""
-		for host, files in data.items():
-			dynamicContent += "<div class=\"host\"><h3>"+html.escape(host)+"</h3><table><thead><td>File Name</td><td>Modification Date</td></thead>"
-			for file in files:
+		for host, info in data.items():
+			dynamicContent += "<div class=\"host\"><h3>"+html.escape(host)+"</h3><h4>Backup Files</h4><table><thead><td>File Name</td><td>Modification Date</td></thead>"
+			for file in info['backups']:
 				dynamicContent += "<tr><td>"+html.escape(file['name'])+"</td><td>"+html.escape(file['date'])+"</td></tr>"
-			if len(files) == 0:
+			if len(info['backups']) == 0:
 				dynamicContent += "<tr><td class=\"error\" colspan=\"2\">No Files Found</td></tr>"
+			dynamicContent += "</table>"
+			dynamicContent += "<h4>Docker Volumes</h4><table><thead><td>Volume Name</td><td>Compose Project</td><td>Compose Volume</td></thead>"
+			for volume in info['volumes']:
+				dynamicContent += "<tr><td>"+html.escape(volume['Name'])+"</td><td>"+html.escape(volume['Labels']['com.docker.compose.project'])+"</td><td>"+html.escape(volume['Labels']['com.docker.compose.volume'])+"</td></tr>"
+			if len(info['volumes']) == 0:
+				dynamicContent += "<tr><td class=\"error\" colspan=\"2\">No Volumes Found</td></tr>"
 			dynamicContent += "</table></div>"
 		template = open("resources/summary.html", 'r')
 		output = template.read().replace("$$DATA$$", dynamicContent)
