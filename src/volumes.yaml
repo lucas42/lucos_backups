@@ -1,0 +1,66 @@
+effort_labels:
+    small: Small Technical Effort
+    considerable: Considerable Effort
+    huge: Huge Effort
+    automatic: Fully Automated
+    tolerable: Tolerable Loss
+    unknown: Unknown Effort
+
+volumes:
+    lucos_authentication_config:
+        description: Configuration Data for authentication
+        effort: small
+    lucos_contacts_db_data:
+        description: Personal data about contacts
+        effort: huge
+    lucos_contacts_staticfiles:
+        description: Sharing static assets between docker containers
+        effort: automatic
+    lucos_dns_dynamicconfig:
+        description: Sharing DNS config between docker containers
+        effort: automatic
+    lucos_loganne_state:
+        description: Recent event logs
+        effort: tolerable
+    lucos_media_metadata_api_db:
+        description: Data about media files
+        effort: huge
+    lucos_notes_stateFile:
+        description: Todo list notes
+        effort: considerable
+    lucos_router_generatedconfig:
+        description: Routing configuration
+        effort: automatic
+    lucos_router_letsencrypt:
+        description: TLS certificates
+        effort: automatic
+    lucos_schedule_tracker_db:
+        description: Recent results of scheduled jobs
+        effort: automatic
+    lucos_file_sync_documents-read:
+        description: Not yet properly used
+        effort: tolerable
+    lucos_lanscan_reports:
+        description: No longer used
+        effort: tolerable
+    lucos_media_fixup_media:
+        description: No longer used
+        effort: tolerable
+    lucos_media_import_media:
+        description: Remote volume on NAS
+        effort: automatic
+    lucos_private_medlib:
+        description: Remote volume on NAS
+        effort: automatic
+    lucos_router_generatedconfig:
+        description: Routing configuration
+        effort: automatic
+    lucos_router_letsencrypt:
+        description: TLS certificates
+        effort: automatic
+    lucos_static_media_public:
+        description: Remote volume on NAS
+        effort: automatic
+    pici_docker:
+        description: Cache of docker layers etc used when building new images
+        effort: automatic

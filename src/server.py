@@ -56,9 +56,9 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			if len(info['backups']) == 0:
 				dynamicContent += "<tr><td class=\"error\" colspan=\"2\">No Files Found</td></tr>"
 			dynamicContent += "</table>"
-			dynamicContent += "<h4>Docker Volumes</h4><table><thead><td>Volume Name</td><td>Compose Project</td><td>Compose Volume</td></thead>"
+			dynamicContent += "<h4>Docker Volumes</h4><table><thead><td>Volume Name</td><td>Description</td><td>Rebuild Effort</td><td>Compose Project</td></thead>"
 			for volume in info['volumes']:
-				dynamicContent += "<tr><td>"+html.escape(volume['Name'])+"</td><td>"+html.escape(volume['Labels']['com.docker.compose.project'])+"</td><td>"+html.escape(volume['Labels']['com.docker.compose.volume'])+"</td></tr>"
+				dynamicContent += "<tr><td>"+html.escape(volume['Name'])+"</td><td>"+html.escape(volume['description'])+"</td><td class=\"effort "+volume['effort']+"\">"+html.escape(volume['effort label'])+"</td><td>"+html.escape(volume['Labels']['com.docker.compose.project'])+"</td></tr>"
 			if len(info['volumes']) == 0:
 				dynamicContent += "<tr><td class=\"error\" colspan=\"2\">No Volumes Found</td></tr>"
 			dynamicContent += "</table></div>"

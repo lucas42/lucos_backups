@@ -1,8 +1,13 @@
 import os, sys, io, json
-import fabric, paramiko
+import fabric, paramiko, yaml
 
 if not os.environ.get("SSH_PRIVATE_KEY"):
 	sys.exit("\033[91mSSH_PRIVATE_KEY not set\033[0m")
+
+with open("volumes.yaml") as volume_file:
+	config = yaml.safe_load(volume_file)
+	volumesConfig = config["volumes"]
+	effort_labels = config["effort_labels"]
 
 def getPrivateKey():
 	rawString = os.environ.get("SSH_PRIVATE_KEY").replace("~","=") # Padding characters are stored as tildas due to limitation in lucos_creds
@@ -37,6 +42,15 @@ def fetchInfoByHost(host):
 		for label in labels:
 			key, value = label.split("=", 1)
 			volume["Labels"][key] = value
+		if volume["Name"] in volumesConfig:
+			volume["known"] = True
+			volume["description"] = volumesConfig[volume["Name"]]["description"]
+			volume["effort"] = volumesConfig[volume["Name"]]["effort"]
+		else:
+			volume["known"] = False
+			volume["description"] = "Unknown Volume"
+			volume["effort"] = "unknown"
+		volume["effort label"] = effort_labels[volume["effort"]]
 		volumes.append(volume)
 	return {
 		"backups": backups,

@@ -2,7 +2,7 @@ html {
 	background: repeating-linear-gradient(-40deg, #ccc, #eee 20px, #eeeeef 20px, #aaaaaf 25px);
 }
 main {
-	max-width: 800px;
+	max-width: 1000px;
 	margin: auto;
 }
 .host {
@@ -30,4 +30,33 @@ main {
 	text-align: center;
 	background-color: rgba(20, 20, 20, 0.15);
 	padding: 10px;
+}
+.effort {
+	border: solid;
+	border-radius: 5px;
+	text-align: center;
+}
+.effort.small {
+	background-color: #ffd;
+	color: #550;
+}
+.effort.considerable {
+	background-color: #fdc;
+	color: #530;
+}
+.effort.huge {
+	background-color: #fdd;
+	color: #500;
+}
+.effort.automatic {
+	background-color: #e9ffe9;
+	color: #050;
+}
+.effort.tolerable {
+	background-color: #def;
+	color: #005;
+}
+.effort.unknown {
+	background-color: #ddd;
+	color: #333;
 }

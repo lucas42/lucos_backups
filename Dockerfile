@@ -13,6 +13,7 @@ COPY src/Pipfile* ./
 RUN pipenv install
 
 COPY src/*.py ./
+COPY src/*.yaml ./
 COPY src/resources resources
 COPY --from=navbar lucos_navbar.js resources/
 
