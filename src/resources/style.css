@@ -60,3 +60,13 @@ main {
 	background-color: #ddd;
 	color: #333;
 }
+footer {
+	text-align: right;
+	position: absolute;
+	left: 0;
+	right: 0;
+	padding: 0.5em 1em;
+	font-weight: bold;
+	color: #222;
+	background-image: linear-gradient(#aaa 0%, #ccc 21%, #999 85%, #aaa 100%);
+}

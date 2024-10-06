@@ -1,4 +1,4 @@
-import os, sys, io, json
+import os, sys, io, json, datetime
 import fabric, paramiko, yaml
 
 if not os.environ.get("SSH_PRIVATE_KEY"):
@@ -59,6 +59,12 @@ def fetchInfoByHost(host):
 		"volumes": volumes,
 	}
 
+def volumeInList(volumeName, allVolumes):
+	for volume in allVolumes:
+		if volumeName == volume["Name"]:
+			return True
+	return False
+
 def fetchAllInfo():
 	info = {
 		"hosts": {},
@@ -75,10 +81,12 @@ def fetchAllInfo():
 	for volumeName in volumesConfig:
 		if not volumeInList(volumeName, info["volumes"]):
 			info["notOnHost"].append(volumeName)
-	return info
+	info["update_time"] = datetime.datetime.now(datetime.timezone.utc)
+	# Only updates the global variable once all info is fetched
+	global latestInfo
+	latestInfo = info
 
-def volumeInList(volumeName, allVolumes):
-	for volume in allVolumes:
-		if volumeName == volume["Name"]:
-			return True
-	return False
+def getAllInfo():
+	return latestInfo
+
+fetchAllInfo()
