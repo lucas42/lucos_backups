@@ -13,8 +13,8 @@
 		<main>
 			{% for host, info in hosts.items(): %}
 				<div class="host">
-					<h3>{{host}}</h3>
-					<h4>Backup Files</h4>
+					<h2>Host: {{host|title}}</h2>
+					<h3>Backup Files</h3>
 					<table>
 						<thead>
 							<td>File Name</td>
@@ -31,7 +31,7 @@
 						</tr>
 						{% endfor %}
 					</table>
-					<h4>Docker Volumes</h4>
+					<h3>Docker Volumes</h3>
 					<table>
 						<thead>
 							<td>Volume Name</td>
@@ -53,8 +53,7 @@
 						{% endfor %}
 					</table>
 					<span class="disk-space">
-						<h4>Disk Space</h4>
-						{{info['free_space_readable']}} available.  {{info['space_used_percentage']}} used.
+						<h3>Disk Space</h3>: {{info['free_space_readable']}} available ({{info['space_used_percentage']}} used).
 					</span>
 				</div>
 			{% endfor %}
