@@ -1,8 +1,6 @@
-import os, sys, io, json, datetime
-import fabric, paramiko, yaml
-
-if not os.environ.get("SSH_PRIVATE_KEY"):
-	sys.exit("\033[91mSSH_PRIVATE_KEY not set\033[0m")
+import json, datetime
+import yaml
+from connections import getConnection
 
 with open("config.yaml") as volume_file:
 	config = yaml.safe_load(volume_file)
@@ -10,19 +8,8 @@ with open("config.yaml") as volume_file:
 	effort_labels = config["effort_labels"]
 	hosts = config["hosts"]
 
-def getPrivateKey():
-	rawString = os.environ.get("SSH_PRIVATE_KEY").replace("~","=") # Padding characters are stored as tildas due to limitation in lucos_creds
-	fileObject = io.StringIO(rawString)
-	return paramiko.ed25519key.Ed25519Key.from_private_key(fileObject)
-
 def fetchInfoByHost(host):
-	conn = fabric.Connection(
-		host=host,
-		user="lucos-backups",
-		connect_kwargs={
-			"pkey": getPrivateKey(),
-		},
-	)
+	conn = getConnection(host)
 	result = conn.run('ls -l --time-style=long-iso --literal /srv/backups', hide=True)
 	raw_files = result.stdout.splitlines()
 	del raw_files[0] # Drop the header line from ls
@@ -57,6 +44,7 @@ def fetchInfoByHost(host):
 	raw_space_result = conn.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout
 	readable_space_result = conn.run("df -Ph /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout
 	percentage_space_result = conn.run("df -P /srv/backups | tail -1 | awk '{print $5}'", hide=True).stdout
+	conn.close()
 	return {
 		"backups": backups,
 		"volumes": volumes,
