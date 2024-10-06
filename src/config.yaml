@@ -55,3 +55,11 @@ volumes:
     lucos_creds_store:
         description: Credentials used by lucos services.  Both between services within lucos and to third party services.
         effort: considerable
+
+hosts:
+    avalon:
+        domain: avalon.s.l42.eu
+    xwing:
+        domain: xwing.s.l42.eu
+    salvare:
+        domain: salvare.s.l42.eu

@@ -4,10 +4,11 @@ import fabric, paramiko, yaml
 if not os.environ.get("SSH_PRIVATE_KEY"):
 	sys.exit("\033[91mSSH_PRIVATE_KEY not set\033[0m")
 
-with open("volumes.yaml") as volume_file:
+with open("config.yaml") as volume_file:
 	config = yaml.safe_load(volume_file)
 	volumesConfig = config["volumes"]
 	effort_labels = config["effort_labels"]
+	hosts = config["hosts"]
 
 def getPrivateKey():
 	rawString = os.environ.get("SSH_PRIVATE_KEY").replace("~","=") # Padding characters are stored as tildas due to limitation in lucos_creds
@@ -60,15 +61,14 @@ def fetchInfoByHost(host):
 
 def fetchAllInfo():
 	info = {
-		"hosts": {
-			"avalon": fetchInfoByHost("avalon.s.l42.eu"),
-			"xwing": fetchInfoByHost("xwing.s.l42.eu"),
-			"salvare": fetchInfoByHost("salvare.s.l42.eu"),
-		},
+		"hosts": {},
 		"notInConfig": [],
 		"notOnHost": [],
 	}
-	allVolumes = info["hosts"]["avalon"]["volumes"] + info["hosts"]["xwing"]["volumes"] + info["hosts"]["salvare"]["volumes"]
+	allVolumes = []
+	for host in hosts:
+		info["hosts"][host] = fetchInfoByHost(hosts[host]["domain"])
+		allVolumes += info["hosts"][host]["volumes"]
 	for volume in allVolumes:
 		if not volume["known"]:
 			info["notInConfig"].append(volume["Name"])
