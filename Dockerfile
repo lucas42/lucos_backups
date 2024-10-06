@@ -16,6 +16,7 @@ RUN pipenv install
 COPY src/*.py ./
 COPY src/*.yaml ./
 COPY src/resources resources
+COPY src/templates templates
 COPY --from=navbar lucos_navbar.js resources/
 
 EXPOSE $PORT

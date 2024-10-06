@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html> 
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>Backups</title>
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<link rel="icon" href="/icon.png" />
+		<link href="/style.css" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+		<lucos-navbar>Backups</lucos-navbar>
+		<main>
+			{% for host, info in hosts.items(): %}
+				<div class="host">
+					<h3>{{host}}</h3>
+					<h4>Backup Files</h4>
+					<table>
+						<thead>
+							<td>File Name</td>
+							<td>Modification Date</td>
+						</thead>
+						{% for file in info['backups']:%}
+						<tr>
+							<td>{{file['name']}}</td>
+							<td>{{file['date']}}</td>
+						</tr>
+						{% else %}
+						<tr>
+							<td class="error" colspan="2">No Files Found</td>
+						</tr>
+						{% endfor %}
+					</table>
+					<h4>Docker Volumes</h4>
+					<table>
+						<thead>
+							<td>Volume Name</td>
+							<td>Description</td>
+							<td>Rebuild Effort</td>
+							<td>Project</td>
+						</thead>
+						{% for volume in info['volumes']: %}
+						<tr>
+							<td>{{volume['Name']}}</td>
+							<td>{{volume['description']}}</td>
+							<td class="effort {{volume['effort']}}">{{volume['effort label']}}</td>
+							<td><a href="{{volume['project link']}}" target="_blank">{{volume['Labels']['com.docker.compose.project']}}</a></td>
+						</tr>
+						{% else %}
+						<tr>
+							<td class="error" colspan="2">No Volumes Found</td>
+						</tr>
+						{% endfor %}
+					</table>
+					<span class="disk-space">
+						<h4>Disk Space</h4>
+						{{info['free_space_readable']}} available.  {{info['space_used_percentage']}} used.
+					</span>
+				</div>
+			{% endfor %}
+		</main>
+		<footer>Last updated <time datetime="{{update_time}}">{{update_time}}</time></footer>
+		<script src="/lucos_navbar.js" type="text/javascript"></script>
+	</body>
+</html>
