@@ -54,9 +54,15 @@ def fetchInfoByHost(host):
 		volume["effort label"] = effort_labels[volume["effort"]]
 		volume["project link"] = "https://github.com/lucas42/"+volume['Labels']['com.docker.compose.project']
 		volumes.append(volume)
+	raw_space_result = conn.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout
+	readable_space_result = conn.run("df -Ph /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout
+	percentage_space_result = conn.run("df -P /srv/backups | tail -1 | awk '{print $5}'", hide=True).stdout
 	return {
 		"backups": backups,
 		"volumes": volumes,
+		"free_space": raw_space_result,
+		"free_space_readable": readable_space_result,
+		"space_used_percentage": percentage_space_result,
 	}
 
 def volumeInList(volumeName, allVolumes):
