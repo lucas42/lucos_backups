@@ -104,3 +104,12 @@ footer {
 	color: #222;
 	background-image: linear-gradient(#aaa 0%, #ccc 21%, #999 85%, #aaa 100%);
 }
+footer form {
+	display: inline;
+}
+footer form input {
+	font-size: 16px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+}
