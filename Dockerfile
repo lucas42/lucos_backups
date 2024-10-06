@@ -7,7 +7,7 @@ RUN apk add sed curl
 RUN pip install pipenv
 
 RUN echo "25 3 * * * cd `pwd` && pipenv run python -u do-backups.py >> /var/log/cron.log 2>&1" | crontab -
-RUN echo "* * * * * curl -X POST http://localhost:\$PORT/refresh-tracking -s >> /var/log/cron.log 2>&1" | crontab -
+RUN echo "7 * * * * curl -X POST http://localhost:\$PORT/refresh-tracking -s >> /var/log/cron.log 2>&1" | crontab -
 COPY src/startup.sh .
 
 COPY src/Pipfile* ./
