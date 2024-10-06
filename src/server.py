@@ -37,15 +37,23 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			},
 			"checks": {
 				"volume-config": {
-					"techDetail": "Whether any volumes found on hosts aren't in volumes.yaml",
+					"techDetail": "Whether any docker volumes found on hosts aren't in config.yaml",
 					"ok": (len(data["notInConfig"]) == 0),
 				},
 				"volume-host": {
-					"techDetail": "Whether any volumes in volumes.yaml aren't found on at least one host",
+					"techDetail": "Whether any volumes in config.yaml aren't found on at least one host",
 					"ok": (len(data["notOnHost"]) == 0),
 				},
 			},
 			"metrics": {
+				"host-count": {
+					"techDetail": "The number of hosts being tracked for backups",
+					"value": len(data["hosts"]),
+				},
+				"volume-count": {
+					"techDetail": "The number of docker volumes found across all hosts",
+					"value": len(data["volumes"]),
+				},
 			},
 			"icon": "/icon.png",
 			"network_only": True,

@@ -62,18 +62,18 @@ def fetchInfoByHost(host):
 def fetchAllInfo():
 	info = {
 		"hosts": {},
+		"volumes": [],
 		"notInConfig": [],
 		"notOnHost": [],
 	}
-	allVolumes = []
 	for host in hosts:
 		info["hosts"][host] = fetchInfoByHost(hosts[host]["domain"])
-		allVolumes += info["hosts"][host]["volumes"]
-	for volume in allVolumes:
+		info["volumes"] += info["hosts"][host]["volumes"]
+	for volume in info["volumes"]:
 		if not volume["known"]:
 			info["notInConfig"].append(volume["Name"])
 	for volumeName in volumesConfig:
-		if not volumeInList(volumeName, allVolumes):
+		if not volumeInList(volumeName, info["volumes"]):
 			info["notOnHost"].append(volumeName)
 	return info
 
