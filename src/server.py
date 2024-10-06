@@ -1,5 +1,5 @@
 #! /usr/local/bin/python3
-import json, sys, os, traceback, html, datetime
+import json, sys, os, traceback, html, datetime, zoneinfo
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from tracking import getAllInfo, fetchAllInfo
 from schedule_tracker import updateScheduleTracker
@@ -12,7 +12,11 @@ try:
 except ValueError:
 	sys.exit("\033[91mPORT isn't an integer\033[0m")
 
+def toLondonTime(value):
+	return value.astimezone(zoneinfo.ZoneInfo("Europe/London")).strftime('%H:%M %Y-%m-%d')
+
 templateEnv = Environment(loader=FileSystemLoader("templates/"), autoescape=select_autoescape())
+templateEnv.filters["london_time"] = toLondonTime
 
 class BackupsHandler(BaseHTTPRequestHandler):
 	def do_GET(self):
