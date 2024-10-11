@@ -42,5 +42,6 @@ class Volume:
 		))
 		return archivePath
 	def backupTo(self, target_host):
-		archivePath = self.archiveLocally()
-		self.host.copyFileTo(archivePath, target_host)
+		archive_path = self.archiveLocally()
+		target_path = "/srv/backups/hosts/{}/volumes/{}.tar.gz".format(self.host.name, self.name)
+		self.host.copyFileTo(archive_path, target_host, target_path)

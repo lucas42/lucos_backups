@@ -3,13 +3,13 @@ FROM python:3.13-alpine
 
 WORKDIR /usr/src/app
 
-RUN apk add sed curl
+RUN apk add sed curl openssh-client
 RUN pip install pipenv
 
 COPY src/backups.cron .
 RUN cat backups.cron | crontab -
 RUN rm backups.cron
-COPY src/startup.sh .
+COPY src/*.sh .
 
 COPY src/Pipfile* ./
 RUN pipenv install
