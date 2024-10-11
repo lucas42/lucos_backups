@@ -1,2 +1,2 @@
 25 3 * * * cd `pwd` && pipenv run python -u do-backups.py >> /var/log/cron.log 2>&1
-7 * * * * curl -X POST http://localhost:\$PORT/refresh-tracking -s >> /var/log/cron.log 2>&1
+7 * * * * curl -X POST http://localhost:$PORT/refresh-tracking -s >> /var/log/cron.log 2>&1
