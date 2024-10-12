@@ -1,9 +1,11 @@
 #! /usr/local/bin/python3
-import json, sys, os, traceback, html, datetime, zoneinfo
+import json, sys, os, traceback, html, datetime, zoneinfo, urllib
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.cookies import SimpleCookie
 from tracking import getAllInfo, fetchAllInfo
 from schedule_tracker import updateScheduleTracker
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from auth import isAuthenticated, authenticate
 
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")
@@ -20,22 +22,28 @@ templateEnv.filters["london_time"] = toLondonTime
 
 class BackupsHandler(BaseHTTPRequestHandler):
 	def do_GET(self):
-		if (self.path == "/"):
+		self.parsed = urllib.parse.urlparse(self.path)
+		self.parsed_query = dict(urllib.parse.parse_qsl(self.parsed.query))
+		cookies = SimpleCookie()
+		cookies.load(self.headers.get('Cookie', ''))
+		self.cookies = {k: v.value for k, v in cookies.items()}
+		if (self.parsed.path == "/"):
 			self.summaryController()
-		elif (self.path == "/lucos_navbar.js"):
+		elif (self.parsed.path == "/lucos_navbar.js"):
 			self.staticFileController("lucos_navbar.js", "text/javascript")
-		elif (self.path == "/style.css"):
+		elif (self.parsed.path == "/style.css"):
 			self.staticFileController("style.css", "text/css")
-		elif (self.path == "/icon.png"):
+		elif (self.parsed.path == "/icon.png"):
 			self.staticFileController("icon.png", "image/png")
-		elif (self.path == "/_info"):
+		elif (self.parsed.path == "/_info"):
 			self.infoController()
 		else:
 			self.send_error(404, "Page Not Found")
 		self.wfile.flush()
 		self.connection.close()
 	def do_POST(self):
-		if (self.path == "/refresh-tracking"):
+		self.parsed = urllib.parse.urlparse(self.path)
+		if (self.parsed.path == "/refresh-tracking"):
 			self.refreshTrackingController()
 		else:
 			self.send_error(404, "Page Not Found")
@@ -90,11 +98,17 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		self.end_headers()
 		self.wfile.write(bytes(json.dumps(output, indent="\t")+"\n\n", "utf-8"))
 	def summaryController(self):
-		output = templateEnv.get_template("summary.html").render(getAllInfo())
-		self.send_response(200)
-		self.send_header("Content-type", "text/html")
-		self.end_headers()
-		self.wfile.write(bytes(output, "utf-8"))
+		token = self.parsed_query.get('token') or self.cookies.get('token')
+		if isAuthenticated(token):
+			output = templateEnv.get_template("summary.html").render(getAllInfo())
+			self.send_response(200)
+			self.send_header("Content-type", "text/html")
+			if self.cookies.get('token') != token:
+				self.send_header("Set-Cookie", "token="+token)
+			self.end_headers()
+			self.wfile.write(bytes(output, "utf-8"))
+		else:
+			authenticate(self)
 	def staticFileController(self, filename, contentType):
 		template = open("resources/"+filename, 'rb')
 		self.send_response(200)
