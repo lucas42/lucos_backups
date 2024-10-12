@@ -15,6 +15,7 @@ try:
 			if volume.shouldBackup():
 				volume.backupTo("xwing.s.l42.eu")
 				volumeCount += 1
+		host.closeConnection()
 	print("\033[92m" + "Backups Complete" + "\033[0m")
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m")
