@@ -1,6 +1,5 @@
-import yaml
+import yaml, fabric
 import os
-from connections import getConnection
 from volume import Volume
 
 with open("config.yaml") as config_yaml:
@@ -10,7 +9,11 @@ class Host:
 	def __init__(self, name):
 		self.name = name
 		self.domain = config["hosts"][name]["domain"]
-		self.connection = getConnection(self.domain)
+		self.connection = fabric.Connection(
+			host=self.domain,
+			user="lucos-backups",
+			forward_agent=True,
+		)
 
 	def closeConnection(self):
 		self.connection.close()
