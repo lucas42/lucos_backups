@@ -1,15 +1,19 @@
+import yaml
 import json
 
+with open("config.yaml") as config_yaml:
+	config = yaml.safe_load(config_yaml)
+
 class Volume:
-	def __init__(self, host, rawjson, config, effort_labels):
+	def __init__(self, host, rawjson):
 		self.host = host
 		data = json.loads(rawjson)
 		self.name = data["Name"]
 		self.path = data["Mountpoint"]
-		if self.name in config:
+		if self.name in config["volumes"]:
 			known = True
-			description = config[self.name]["description"]
-			effort_id = config[self.name]["effort"]
+			description = config["volumes"][self.name]["description"]
+			effort_id = config["volumes"][self.name]["effort"]
 		else:
 			known = False
 			description = "Unknown Volume"
@@ -21,7 +25,17 @@ class Volume:
 		project = labels['com.docker.compose.project']
 		self.effort = {
 			'id': effort_id,
-			'label': effort_labels[effort_id],
+			'label': config["effort_labels"][effort_id],
+		}
+		self.data = {
+			'name': self.name,
+			'description': description,
+			'known': known,
+			'effort': self.effort,
+			'project': {
+				'name': project,
+				'link': "https://github.com/lucas42/"+project,
+			},
 		}
 	def shouldBackup(self):
 		return (self.effort['id'] in ['small', 'considerable', 'huge'])
@@ -45,3 +59,21 @@ class Volume:
 		archive_path = self.archiveLocally()
 		target_path = "/srv/backups/hosts/{}/volumes/{}.tar.gz".format(self.host.name, self.name)
 		self.host.copyFileTo(archive_path, target_host, target_path)
+
+	def getData(self):
+		return self.data
+
+	@classmethod
+	def getMissing(cls, volumes):
+		missingVolumes = []
+		for volumeName in config["volumes"]:
+			if not Volume.inList(volumeName, volumes):
+				missingVolumes.append(volumeName)
+		return missingVolumes
+
+	@classmethod
+	def inList(cls, volumeName, allVolumes):
+		for volume in allVolumes:
+			if volumeName == volume["name"]:
+				return True
+		return False

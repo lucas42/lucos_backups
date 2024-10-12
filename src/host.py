@@ -19,7 +19,7 @@ class Host:
 		raw_volumes = self.connection.run('docker volume ls --format json', hide=True).stdout.splitlines()
 		volumes = []
 		for raw_volume in raw_volumes:
-			volumes.append(Volume(self, raw_volume, config["volumes"], config["effort_labels"]))
+			volumes.append(Volume(self, raw_volume))
 		return volumes
 
 	def copyFileTo(self, source_path, target_host, target_path):
@@ -27,6 +27,36 @@ class Host:
 		# Ensure the target directory exists
 		self.connection.run('ssh -o StrictHostKeyChecking=no {} mkdir -p {}'.format(target_host, os.path.dirname(target_path)), hide=True)
 		self.connection.run('scp {} {}:{}'.format(source_path, target_host, target_path), hide=True)
+
+	def checkDiskSpace(self):
+		raw_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout.strip())
+		readable_space_result = self.connection.run("df -Ph /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout.strip()
+		percentage_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $5}' | sed 's/%//'", hide=True).stdout.strip())
+		return {
+			'free_bytes': raw_space_result,
+			'free_readable': readable_space_result,
+			'used_percentage': percentage_space_result,
+		}
+
+	def checkBackupFiles(self):
+		result = self.connection.run('ls -l --time-style=long-iso --literal /srv/backups', hide=True)
+		raw_files = result.stdout.splitlines()
+		del raw_files[0] # Drop the header line from ls
+		backup_files = []
+		for file_info in raw_files:
+			cols = file_info.split(maxsplit=7)
+			backup_files.append({
+				"name": cols[7],
+				"date": cols[5],
+			})
+		return backup_files
+
+	def getData(self):
+		return {
+			'volumes': [vol.getData() for vol in self.getVolumes()],
+			'disk': self.checkDiskSpace(),
+			'backups': self.checkBackupFiles(),
+		}
 
 	@classmethod
 	def getAll(cls):

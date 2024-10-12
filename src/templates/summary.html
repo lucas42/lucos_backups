@@ -41,10 +41,10 @@
 						</thead>
 						{% for volume in info['volumes']: %}
 						<tr>
-							<td>{{volume['Name']}}</td>
+							<td>{{volume['name']}}</td>
 							<td>{{volume['description']}}</td>
-							<td class="effort {{volume['effort']}}">{{volume['effort label']}}</td>
-							<td><a href="{{volume['project link']}}" target="_blank">{{volume['Labels']['com.docker.compose.project']}}</a></td>
+							<td class="effort {{volume['effort']['id']}}">{{volume['effort']['label']}}</td>
+							<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
 						</tr>
 						{% else %}
 						<tr>
@@ -53,7 +53,7 @@
 						{% endfor %}
 					</table>
 					<span class="disk-space">
-						<h3>Disk Space</h3>: {{info['free_space_readable']}} available ({{info['space_used_percentage']}} used).
+						<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
 					</span>
 				</div>
 			{% endfor %}
