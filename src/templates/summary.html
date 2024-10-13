@@ -73,7 +73,11 @@
 									</tr>
 								{% else %}
 									<tr>
+									{% if volume['skip_backup'] %}
+										<td class="skipped" colspan="2" title="This volume has been excluded from backups in config">Backups Skipped</td>
+									{% else %}
 										<td class="error" colspan="2">No Backups</td>
+									{% endif %}
 									</tr>
 								{% endfor %}
 								</table>

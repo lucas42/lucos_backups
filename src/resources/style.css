@@ -103,6 +103,10 @@ a[target=_blank]:after {
 	color: #a00;
 	text-align: center;
 }
+.backup_list .skipped {
+	color: #999;
+	text-align: center;
+}
 footer {
 	text-align: right;
 	position: absolute;
