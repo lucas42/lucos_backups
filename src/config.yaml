@@ -38,9 +38,11 @@ volumes:
     lucos_media_import_media:
         description: Remote volume on NAS
         effort: remote
+        skip_backup: true
     lucos_private_medlib:
         description: Remote volume on NAS
         effort: remote
+        skip_backup: true
     lucos_router_generatedconfig:
         description: Routing configuration
         effort: automatic
@@ -50,9 +52,11 @@ volumes:
     lucos_static_media_public:
         description: Remote volume on NAS
         effort: remote
+        skip_backup: true
     pici_docker:
         description: Cache of docker layers etc used when building new images
         effort: automatic
+        skip_backup: true
     lucos_creds_store:
         description: Credentials used by lucos services.  Both between services within lucos and to third party services.
         effort: considerable

@@ -12,7 +12,7 @@ try:
 	for host in Host.getAll():
 		print("Host:", host.domain)
 		for volume in host.getVolumes():
-			if volume.effort['id'] != 'remote': # Don't try to backup remote volumes
+			if volume.shouldBackup():
 				volume.backupToAll()
 				volumeCount += 1
 		host.closeConnection()

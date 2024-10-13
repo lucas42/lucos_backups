@@ -15,10 +15,12 @@ class Volume:
 			known = True
 			description = config["volumes"][self.name]["description"]
 			effort_id = config["volumes"][self.name]["effort"]
+			skip_backup = config["volumes"][self.name].get("skip_backup", False)
 		else:
 			known = False
 			description = "Unknown Volume"
 			effort_id = "unknown"
+			skip_backup = False
 		labels =  {}
 		for label in data["Labels"].split(","):
 			key, value = label.split("=", 1)
@@ -33,6 +35,7 @@ class Volume:
 			'description': description,
 			'known': known,
 			'effort': self.effort,
+			'skip_backup': skip_backup,
 			'project': {
 				'name': project,
 				'link': "https://github.com/lucas42/"+project,
@@ -69,6 +72,9 @@ class Volume:
 			target_domain = config["hosts"][hostname]["domain"]
 			if target_domain != self.host.domain:
 				self.host.copyFileTo(archive_path, target_domain, target_path)
+
+	def shouldBackup(self):
+		return not self.data["skip_backup"]
 
 	def getData(self):
 		return self.data
