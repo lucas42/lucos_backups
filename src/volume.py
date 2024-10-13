@@ -40,6 +40,7 @@ class Volume:
 				'name': project,
 				'link': "https://github.com/lucas42/"+project,
 			},
+			'source_host': self.host.name
 		}
 
 	def __str__(self):

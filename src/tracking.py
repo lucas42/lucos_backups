@@ -19,7 +19,7 @@ def fetchAllInfo():
 			info["notInConfig"].append(volume["name"])
 		volume["backups"] = []
 		for backedup in info["backedup_volumes"]:
-			if volume["name"] == backedup["volume"]:
+			if volume["name"] == backedup["volume"] and volume["source_host"] == backedup["source_host"]:
 				volume["backups"].append(backedup)
 
 	info["notOnHost"] = Volume.getMissing(info["volumes"])
