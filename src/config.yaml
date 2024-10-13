@@ -4,6 +4,7 @@ effort_labels:
     huge: Huge Effort
     automatic: Fully Automated
     tolerable: Tolerable Loss
+    remote: Remote Mount From Elsewhere
     unknown: Unknown Effort
 
 volumes:
@@ -36,10 +37,10 @@ volumes:
         effort: automatic
     lucos_media_import_media:
         description: Remote volume on NAS
-        effort: automatic
+        effort: remote
     lucos_private_medlib:
         description: Remote volume on NAS
-        effort: automatic
+        effort: remote
     lucos_router_generatedconfig:
         description: Routing configuration
         effort: automatic
@@ -48,7 +49,7 @@ volumes:
         effort: automatic
     lucos_static_media_public:
         description: Remote volume on NAS
-        effort: automatic
+        effort: remote
     pici_docker:
         description: Cache of docker layers etc used when building new images
         effort: automatic

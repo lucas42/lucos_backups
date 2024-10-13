@@ -80,6 +80,10 @@ a[target=_blank]:after {
 	background-color: #def;
 	color: #005;
 }
+.effort.remote {
+	background-color: #dcb;
+	color: #520;
+}
 .effort.unknown {
 	background-color: #ddd;
 	color: #333;
