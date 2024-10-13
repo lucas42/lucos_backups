@@ -54,11 +54,26 @@ class Host:
 			})
 		return backup_files
 
+	def checkBackedUpVolumes(self):
+		filepaths = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/hosts/*/volumes/*.*.tar.gz\'', hide=True).stdout.splitlines()
+		volumes = []
+		for filepath in filepaths:
+			parts = filepath.split('/', 6)
+			fileName_parts = parts[6].split('.', 2)
+			volumes.append({
+				'source_host': parts[4],
+				'stored_host': self.name,
+				'volume': fileName_parts[0],
+				'date': fileName_parts[1],
+			})
+		return volumes
+
 	def getData(self):
 		return {
 			'volumes': [vol.getData() for vol in self.getVolumes()],
 			'disk': self.checkDiskSpace(),
 			'backups': self.checkBackupFiles(),
+			'backedup_volumes': self.checkBackedUpVolumes(),
 		}
 
 	@classmethod

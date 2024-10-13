@@ -31,12 +31,32 @@
 						</tr>
 						{% endfor %}
 					</table>
-					<h3>Docker Volumes</h3>
+					<h3 id="{{host}}-backedupvols">Backed Up Volumes</h3>
+					<table>
+						<thead>
+							<td>Host Name</td>
+							<td>Volume Name</td>
+							<td>Date</td>
+						</thead>
+						{% for file in info['backedup_volumes']:%}
+						<tr>
+							<td>{{file['source_host']}}</td>
+							<td>{{file['volume']}}</td>
+							<td>{{file['date']}}</td>
+						</tr>
+						{% else %}
+						<tr>
+							<td class="error" colspan="3">No Volumes Found</td>
+						</tr>
+						{% endfor %}
+					</table>
+					<h3 id="{{host}}-volumes">Docker Volumes</h3>
 					<table>
 						<thead>
 							<td>Volume Name</td>
 							<td>Description</td>
 							<td>Rebuild Effort</td>
+							<td>Backups</td>
 							<td>Project</td>
 						</thead>
 						{% for volume in info['volumes']: %}
@@ -44,11 +64,20 @@
 							<td>{{volume['name']}}</td>
 							<td>{{volume['description']}}</td>
 							<td class="effort {{volume['effort']['id']}}">{{volume['effort']['label']}}</td>
+							<td>
+								<ul class='backup_list'>
+								{% for backup in volume['backups'] %}
+									<li><a href="#{{backup['stored_host']}}-backedupvols">{{backup['stored_host']|title}}: {{backup['date']}}</a></li>
+								{% else %}
+									<li class="error">No Backups</li>
+								{% endfor %}
+								</ul>
+							</td>
 							<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
 						</tr>
 						{% else %}
 						<tr>
-							<td class="error" colspan="2">No Volumes Found</td>
+							<td class="error" colspan="5">No Volumes Found</td>
 						</tr>
 						{% endfor %}
 					</table>

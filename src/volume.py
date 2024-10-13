@@ -1,5 +1,6 @@
 import yaml
 import json
+from datetime import datetime
 
 with open("config.yaml") as config_yaml:
 	config = yaml.safe_load(config_yaml)
@@ -47,17 +48,18 @@ class Volume:
 	def archiveLocally(self):
 		print("Creating local archive of "+str(self))
 		archiveDirectory = "/srv/backups/local-volumes"
-		archivePath = "{archive_directory}/{volume_name}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name)
+		date = datetime.today().strftime('%Y-%m-%d')
+		archivePath = "{archive_directory}/{volume_name}__{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
 		self.host.connection.run("mkdir -p {}".format(archiveDirectory))
 		self.host.connection.run("docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind alpine:latest tar -C /raw-data -czf {archive_path} .".format(
 			volume_name=self.name,
 			archive_directory=archiveDirectory,
 			archive_path=archivePath,
 		))
-		return archivePath
+		return (archivePath, date)
 	def backupTo(self, target_host):
-		archive_path = self.archiveLocally()
-		target_path = "/srv/backups/hosts/{}/volumes/{}.tar.gz".format(self.host.name, self.name)
+		(archive_path, date) = self.archiveLocally()
+		target_path = "/srv/backups/hosts/{}/volumes/{}.{}.tar.gz".format(self.host.name, self.name, date)
 		self.host.copyFileTo(archive_path, target_host, target_path)
 
 	def getData(self):

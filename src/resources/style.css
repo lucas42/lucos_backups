@@ -2,7 +2,7 @@ html {
 	background: repeating-linear-gradient(-40deg, #ccc, #eee 20px, #eeeeef 20px, #aaaaaf 25px);
 }
 main {
-	max-width: 1000px;
+	max-width: 1250px;
 	margin: auto;
 }
 .host {
@@ -26,6 +26,7 @@ main {
 .host table > tbody td {
 	font-family: monospace;
 	font-weight: bolder;
+	padding: 2px 5px;
 }
 .host table > thead td {
 	background: rgba(0, 0, 25, 0.7);
@@ -93,6 +94,15 @@ a[target=_blank]:after {
 }
 .disk-space h3 {
 	display: inline;
+}
+.backup_list {
+	padding-inline: 0;
+	list-style: none;
+	white-space: nowrap;
+}
+.backup_list .error {
+	color: #a00;
+	text-align: center;
 }
 footer {
 	text-align: right;
