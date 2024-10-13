@@ -65,13 +65,18 @@
 							<td>{{volume['description']}}</td>
 							<td class="effort {{volume['effort']['id']}}">{{volume['effort']['label']}}</td>
 							<td>
-								<ul class='backup_list'>
+								<table class='backup_list'>
 								{% for backup in volume['backups'] %}
-									<li><a href="#{{backup['stored_host']}}-backedupvols">{{backup['stored_host']|title}}: {{backup['date']}}</a></li>
+									<tr>
+										<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['stored_host']|title}}:</a></td>
+										<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['date']}}</a></td>
+									</tr>
 								{% else %}
-									<li class="error">No Backups</li>
+									<tr>
+										<td class="error" colspan="2">No Backups</td>
+									</tr>
 								{% endfor %}
-								</ul>
+								</table>
 							</td>
 							<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
 						</tr>

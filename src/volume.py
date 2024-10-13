@@ -38,8 +38,7 @@ class Volume:
 				'link': "https://github.com/lucas42/"+project,
 			},
 		}
-	def shouldBackup(self):
-		return (self.effort['id'] in ['small', 'considerable', 'huge'])
+
 	def __str__(self):
 		return "<Volume {} on {}>".format(self.name, self.host.name)
 
@@ -61,6 +60,15 @@ class Volume:
 		(archive_path, date) = self.archiveLocally()
 		target_path = "/srv/backups/hosts/{}/volumes/{}.{}.tar.gz".format(self.host.name, self.name, date)
 		self.host.copyFileTo(archive_path, target_host, target_path)
+
+	# Backs up the volume to all available hosts (except the one the volume is on)
+	def backupToAll(self):
+		(archive_path, date) = self.archiveLocally()
+		target_path = "/srv/backups/hosts/{}/volumes/{}.{}.tar.gz".format(self.host.name, self.name, date)
+		for hostname in config["hosts"]:
+			target_domain = config["hosts"][hostname]["domain"]
+			if target_domain != self.host.domain:
+				self.host.copyFileTo(archive_path, target_domain, target_path)
 
 	def getData(self):
 		return self.data

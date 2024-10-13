@@ -12,9 +12,8 @@ try:
 	for host in Host.getAll():
 		print("Host:", host.domain)
 		for volume in host.getVolumes():
-			if volume.shouldBackup():
-				volume.backupTo("xwing.s.l42.eu")
-				volumeCount += 1
+			volume.backupToAll()
+			volumeCount += 1
 		host.closeConnection()
 	print("\033[92m" + "Backups Complete" + "\033[0m")
 except Exception as error:
