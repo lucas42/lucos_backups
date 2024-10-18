@@ -56,17 +56,35 @@ class Host:
 
 	def checkBackedUpVolumes(self):
 		filepaths = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/hosts/*/volumes/*.*.tar.gz\'', hide=True).stdout.splitlines()
-		volumes = []
+		volumes = {}
 		for filepath in filepaths:
 			parts = filepath.split('/', 6)
 			fileName_parts = parts[6].split('.', 2)
-			volumes.append({
-				'source_host': parts[4],
-				'stored_host': self.name,
-				'volume': fileName_parts[0],
-				'date': fileName_parts[1],
-			})
-		return volumes
+			source_host = parts[4]
+			volume = fileName_parts[0]
+			date = fileName_parts[1]
+			if volume not in volumes:
+				volumes[volume] = {}
+			if source_host not in volumes[volume]:
+				volumes[volume][source_host] = {
+					'source_host': source_host,
+					'stored_host': self.name,
+					'volume': volume,
+					'latest_date': date,
+					'earliest_date': date,
+					'count': 1,
+				}
+			else:
+				volumes[volume][source_host]['count'] += 1
+				if date > volumes[volume][source_host]['latest_date']:
+					volumes[volume][source_host]['latest_date'] = date
+				if date < volumes[volume][source_host]['earliest_date']:
+					volumes[volume][source_host]['earliest_date'] = date
+		volumeList = []
+		for volume in volumes:
+			for source_host in volumes[volume]:
+				volumeList.append(volumes[volume][source_host])
+		return volumeList
 
 	def getData(self):
 		return {
