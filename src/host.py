@@ -55,14 +55,13 @@ class Host:
 		return backup_files
 
 	def checkBackedUpVolumes(self):
-		filepaths = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/hosts/*/volumes/*.*.tar.gz\'', hide=True).stdout.splitlines()
+		filelist = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/hosts/*/volumes/*.*.tar.gz\' -exec du -sh {} \\;', hide=True).stdout.splitlines()
 		volumes = {}
-		for filepath in filepaths:
+		for fileinfo in filelist:
+			size, filepath = fileinfo.split('	', 1)
 			parts = filepath.split('/', 6)
-			fileName_parts = parts[6].split('.', 2)
+			volume, date, extension = parts[6].split('.', 2)
 			source_host = parts[4]
-			volume = fileName_parts[0]
-			date = fileName_parts[1]
 			if volume not in volumes:
 				volumes[volume] = {}
 			if source_host not in volumes[volume]:
@@ -73,6 +72,7 @@ class Host:
 					'latest_date': date,
 					'earliest_date': date,
 					'count': 1,
+					'backups': [],
 				}
 			else:
 				volumes[volume][source_host]['count'] += 1
@@ -80,9 +80,15 @@ class Host:
 					volumes[volume][source_host]['latest_date'] = date
 				if date < volumes[volume][source_host]['earliest_date']:
 					volumes[volume][source_host]['earliest_date'] = date
+			volumes[volume][source_host]['backups'].append({
+				'name': parts[6],
+				'date': date,
+				'size': size,
+			})
 		volumeList = []
 		for volume in volumes:
 			for source_host in volumes[volume]:
+				volumes[volume][source_host]['backups'] = sorted(volumes[volume][source_host]['backups'], key=lambda v: v['date'])
 				volumeList.append(volumes[volume][source_host])
 		return volumeList
 

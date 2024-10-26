@@ -1,9 +1,13 @@
 import requests, urllib
 valid_tokens = [] # A cache of tokens which are known to be valid
 
-def isAuthenticated(token):
+class AuthException(Exception):
+	pass
+
+def checkAuth(handler):
+	token = handler.parsed_query.get('token') or handler.cookies.get('token')
 	if not token:
-		return False
+		raise AuthException("No token found")
 	if token in valid_tokens:
 		return True
 	try:
@@ -13,10 +17,14 @@ def isAuthenticated(token):
 		return True
 	except Exception as error:
 		print ("\033[91m** Authentication Error ** " + str(error) + "\033[0m")
-		return False
+		raise AuthException(str(error))
 
 def authenticate(handler):
 	redirect_url = "{}://{}{}".format(handler.headers.get('X-Forwarded-Proto', 'http'), handler.headers.get('Host'), handler.parsed.path)
 	handler.send_response(303)
 	handler.send_header("Location", "https://auth.l42.eu/authenticate?"+urllib.parse.urlencode({'redirect_uri': redirect_url}))
 	handler.end_headers()
+
+def setAuthCookies(handler):
+	if handler.parsed_query.get('token') is not None and handler.cookies.get('token') != handler.parsed_query.get('token'):
+		handler.send_header("Set-Cookie", "token="+handler.parsed_query.get('token'))

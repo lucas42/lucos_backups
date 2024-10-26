@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html> 
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>Backups | {{host|title}}</title>
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<link rel="icon" href="/icon.png" />
+		<link href="/style.css" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+		<lucos-navbar><a href="/hosts">{{host|title}}</a></lucos-navbar>
+		<main>
+			<div class="host">
+				<h2>Summary</h2>
+				<h3>Backup Files</h3>
+				<table>
+					<thead>
+						<td>File Name</td>
+						<td>Modification Date</td>
+					</thead>
+					{% for file in info['backups']:%}
+					<tr>
+						<td>{{file['name']}}</td>
+						<td>{{file['date']}}</td>
+					</tr>
+					{% else %}
+					<tr>
+						<td class="error" colspan="2">No Files Found</td>
+					</tr>
+					{% endfor %}
+				</table>
+				<h3 id="{{host}}-backedupvols">Backed Up Volumes</h3>
+				<table>
+					<thead>
+						<td>Volume Name</td>
+						<td>Source Host</td>
+						<td>Earliest Date</td>
+						<td>Latest Date</td>
+						<td>Backup Count</td>
+					</thead>
+					{% for file in info['backedup_volumes']:%}
+					<tr>
+						<td>{{file['volume']}}</td>
+						<td>{{file['source_host']}}</td>
+						<td>{{file['earliest_date']}}</td>
+						<td>{{file['latest_date']}}</td>
+						<td>{{file['count']}}</td>
+					</tr>
+					{% else %}
+					<tr>
+						<td class="error" colspan="5">No Volumes Found</td>
+					</tr>
+					{% endfor %}
+				</table>
+				<h3 id="{{host}}-volumes">Docker Volumes</h3>
+				<table>
+					<thead>
+						<td>Volume Name</td>
+						<td>Description</td>
+						<td>Rebuild Effort</td>
+						<td>Latest Backups</td>
+						<td>Project</td>
+					</thead>
+					{% for volume in info['volumes']: %}
+					<tr>
+						<td>{{volume['name']}}</td>
+						<td>{{volume['description']}}</td>
+						<td class="effort {{volume['effort']['id']}}">{{volume['effort']['label']}}</td>
+						<td>
+							<table class='backup_list'>
+							{% for backup in volume['backups'] %}
+								<tr>
+									<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['stored_host']|title}}:</a></td>
+									<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['latest_date']}}</a></td>
+								</tr>
+							{% else %}
+								<tr>
+								{% if volume['skip_backup'] %}
+									<td class="skipped" colspan="2" title="This volume has been excluded from backups in config">Backups Skipped</td>
+								{% else %}
+									<td class="error" colspan="2">No Backups</td>
+								{% endif %}
+								</tr>
+							{% endfor %}
+							</table>
+						</td>
+						<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
+					</tr>
+					{% else %}
+					<tr>
+						<td class="error" colspan="5">No Volumes Found</td>
+					</tr>
+					{% endfor %}
+				</table>
+				<span class="disk-space">
+					<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
+				</span>
+			</div>
+			<div class="host">
+				<h2>Volume Backups</h2>
+
+				{% for file in info['backedup_volumes']: %}
+				<h3>{{file['volume']}} from {{file['source_host']}} ({{file['count']}} backups)</h3>
+				<table>
+					<thead>
+						<td>Filename</td>
+						<td>Date</td>
+						<td>Size</td>
+					</thead>
+					{% for backup in file['backups']: %}
+					<tr>
+						<td>{{backup['name']}}</td>
+						<td>{{backup['date']}}</td>
+						<td>{{backup['size']}}</td>
+					</tr>
+					{% endfor %}
+				</table>
+				{% endfor %}
+			</div>
+		</main>
+		<footer>
+			Last updated: <time datetime="{{update_time}}">{{update_time|london_time}}</time> London Time
+			<form action="/refresh-tracking" method="POST"><input type="submit" value="🔃" title="Refresh Tracking Data" /></form>
+		</footer>
+		<script src="/lucos_navbar.js" type="text/javascript"></script>
+	</body>
+</html>

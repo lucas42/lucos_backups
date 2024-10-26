@@ -19,6 +19,9 @@ main {
 	padding: 15px;
 	border-radius: 12px 12px 0 0;
 }
+.host h2 a {
+	color: inherit;
+}
 
 .host table {
 	width: 100%;
@@ -43,7 +46,7 @@ main {
 .host > table > tr:nth-child(even) {
 	background-color: rgba(20, 20, 20, 0.15);
 }
-a {
+.host > table a {
 	color: #444;
 	text-wrap: nowrap;
 }

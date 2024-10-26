@@ -13,7 +13,7 @@
 		<main>
 			{% for host, info in hosts.items(): %}
 				<div class="host">
-					<h2>Host: {{host|title}}</h2>
+					<h2><a href="/hosts/{{host}}">Host: {{host|title}}</a></h2>
 					<h3>Backup Files</h3>
 					<table>
 						<thead>
