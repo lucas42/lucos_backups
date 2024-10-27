@@ -94,6 +94,7 @@ class Host:
 
 	def getData(self):
 		return {
+			'domain': self.domain,
 			'volumes': [vol.getData() for vol in self.getVolumes()],
 			'disk': self.checkDiskSpace(),
 			'backups': self.checkBackupFiles(),

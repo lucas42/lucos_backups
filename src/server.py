@@ -67,14 +67,17 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				"volume-config": {
 					"techDetail": "Whether any docker volumes found on hosts aren't in config.yaml",
 					"ok": (len(data["notInConfig"]) == 0),
+					"debug": "Volumes missing from volumes.yaml: "+", ".join(data["notInConfig"]),
 				},
 				"volume-host": {
 					"techDetail": "Whether any volumes in config.yaml aren't found on at least one host",
 					"ok": (len(data["notOnHost"]) == 0),
+					"debug": "Volumes not found on host: "+", ".join(data["notOnHost"]),
 				},
 				"data-age": {
 					"techDetail": "Whether the data being used to track backups is more than 2 hours old",
 					"ok": (data_age < datetime.timedelta(hours=2)),
+					"debug": "Last updated: "+str(data["update_time"]),
 				}
 			},
 			"metrics": {
@@ -91,12 +94,24 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			"network_only": True,
 			"show_on_homepage": True,
 		}
-		if not output["checks"]["volume-config"]["ok"]:
-			output["checks"]["volume-config"]["debug"] = "Volumes missing from volumes.yaml: "+", ".join(data["notInConfig"])
-		if not output["checks"]["volume-host"]["ok"]:
-			output["checks"]["volume-host"]["debug"] = "Volumes not found on host: "+", ".join(data["notOnHost"])
-		if not output["checks"]["data-age"]["ok"]:
-			output["checks"]["data-age"]["debug"] = "Last updated: "+str(data["update_time"])
+
+		# Add host-specific metrics & checks for each host
+		for host, info in data["hosts"].items():
+			output["checks"]["disk-space-{}".format(host)] = {
+				"techDetail": "Whether more than 95% of disk space has been used on the host \"{}\"".format(info['domain']),
+				"ok": info['disk']['used_percentage'] <= 95,
+				"debug": "{}% of disk space used".format(info['disk']['used_percentage']),
+			}
+			output["metrics"]["disk-used-{}".format(host)] = {
+				"techDetail": "Percentage of total disk space used on host \"{}\"".format(info['domain']),
+				"value": info['disk']['used_percentage'],
+			}
+
+		# Remove debug output for checks which aren't failing
+		for checkid in output["checks"]:
+			if output["checks"][checkid]["ok"]:
+				del output["checks"][checkid]["debug"]
+
 		self.send_response(200)
 		self.send_header("Content-type", "application/json")
 		self.end_headers()
