@@ -18,9 +18,9 @@ def fetchAllInfo():
 		if not volume["known"]:
 			info["notInConfig"].append(volume["name"])
 		volume["backups"] = []
-		for backedup in info["backedup_volumes"]:
-			if volume["name"] == backedup["volume"] and volume["source_host"] == backedup["source_host"]:
-				volume["backups"].append(backedup)
+		for backup in info["backedup_volumes"]:
+			if backup['type'] == "volume" and volume["name"] == backup["name"] and volume["source_host"] == backup["source_host"]:
+				volume["backups"].append(backup)
 
 	info["notOnHost"] = Volume.getMissing(info["volumes"])
 	info["update_time"] = datetime.datetime.now(datetime.timezone.utc)

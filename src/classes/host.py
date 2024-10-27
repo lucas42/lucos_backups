@@ -1,6 +1,11 @@
+'''
+Host
+A particular computer (virutal or physical), which has files to be backed up from, can store backups, or both.
+'''
 import yaml, fabric
 import os
 from classes.volume import Volume
+from classes.backup import Backup
 
 with open("config.yaml") as config_yaml:
 	config = yaml.safe_load(config_yaml)
@@ -54,43 +59,31 @@ class Host:
 			})
 		return backup_files
 
-	def checkBackedUpVolumes(self):
+	def getVolumeBackups(self):
 		filelist = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/hosts/*/volumes/*.*.tar.gz\' -exec du -sh {} \\;', hide=True).stdout.splitlines()
+		backupList = []
 		volumes = {}
 		for fileinfo in filelist:
 			size, filepath = fileinfo.split('	', 1)
 			parts = filepath.split('/', 6)
 			volume, date, extension = parts[6].split('.', 2)
-			source_host = parts[4]
+			source_hostname = parts[4]
 			if volume not in volumes:
 				volumes[volume] = {}
-			if source_host not in volumes[volume]:
-				volumes[volume][source_host] = {
-					'source_host': source_host,
-					'stored_host': self.name,
-					'volume': volume,
-					'latest_date': date,
-					'earliest_date': date,
-					'count': 1,
-					'backups': [],
-				}
-			else:
-				volumes[volume][source_host]['count'] += 1
-				if date > volumes[volume][source_host]['latest_date']:
-					volumes[volume][source_host]['latest_date'] = date
-				if date < volumes[volume][source_host]['earliest_date']:
-					volumes[volume][source_host]['earliest_date'] = date
-			volumes[volume][source_host]['backups'].append({
-				'name': parts[6],
-				'date': date,
-				'size': size,
-			})
-		volumeList = []
-		for volume in volumes:
-			for source_host in volumes[volume]:
-				volumes[volume][source_host]['backups'] = sorted(volumes[volume][source_host]['backups'], key=lambda v: v['date'])
-				volumeList.append(volumes[volume][source_host])
-		return volumeList
+			if source_hostname not in volumes[volume]:
+				volumes[volume][source_hostname] = Backup(
+					stored_host=self,
+					source_hostname=source_hostname,
+					type='volume',
+					name=volume,
+				)
+				backupList.append(volumes[volume][source_hostname])
+			volumes[volume][source_hostname].addInstance(
+				name=parts[6],
+				date=date,
+				size=size,
+			)
+		return backupList
 
 	def getData(self):
 		return {
@@ -98,7 +91,7 @@ class Host:
 			'volumes': [vol.getData() for vol in self.getVolumes()],
 			'disk': self.checkDiskSpace(),
 			'backups': self.checkBackupFiles(),
-			'backedup_volumes': self.checkBackedUpVolumes(),
+			'backedup_volumes': [backup.getData() for backup in self.getVolumeBackups()],
 		}
 
 	@classmethod

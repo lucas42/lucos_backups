@@ -41,7 +41,7 @@
 					</thead>
 					{% for file in info['backedup_volumes']:%}
 					<tr>
-						<td>{{file['volume']}}</td>
+						<td>{{file['name']}}</td>
 						<td>{{file['source_host']}}</td>
 						<td>{{file['earliest_date']}}</td>
 						<td>{{file['latest_date']}}</td>
@@ -108,7 +108,7 @@
 						<td>Date</td>
 						<td>Size</td>
 					</thead>
-					{% for backup in file['backups']: %}
+					{% for backup in file['instances']: %}
 					<tr>
 						<td>{{backup['name']}}</td>
 						<td>{{backup['date']}}</td>
