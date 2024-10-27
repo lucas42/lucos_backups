@@ -4,6 +4,7 @@ A particular computer (virutal or physical), which has files to be backed up fro
 '''
 import yaml, fabric
 import os
+from datetime import datetime
 from classes.volume import Volume
 from classes.backup import Backup
 
@@ -80,8 +81,9 @@ class Host:
 				backupList.append(volumes[volume][source_hostname])
 			volumes[volume][source_hostname].addInstance(
 				name=parts[6],
-				date=date,
+				date=datetime.strptime(date, '%Y-%m-%d').date(),
 				size=size,
+				path=filepath,
 			)
 		return backupList
 
