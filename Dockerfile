@@ -14,11 +14,8 @@ COPY src/*.sh .
 COPY src/Pipfile* ./
 RUN pipenv install
 
-COPY src/*.py ./
-COPY src/*.yaml ./
-COPY src/resources resources
-COPY src/templates templates
+COPY src /usr/src/app
 COPY --from=navbar lucos_navbar.js resources/
 
 EXPOSE $PORT
-CMD [ "./startup.sh"]
+CMD [ "./scripts/startup.sh"]

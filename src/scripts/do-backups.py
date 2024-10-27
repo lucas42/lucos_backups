@@ -1,8 +1,8 @@
 #! /usr/local/bin/python3
 import traceback
-from loganne import loganneRequest
-from schedule_tracker import updateScheduleTracker
-from host import Host
+from utils.loganne import loganneRequest
+from utils.schedule_tracker import updateScheduleTracker
+from classes.host import Host
 
 # Record in loganne that the script has started
 print ("\033[0mStarting Backups...")

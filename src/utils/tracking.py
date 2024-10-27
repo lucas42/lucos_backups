@@ -1,6 +1,6 @@
 import datetime
-from host import Host
-from volume import Volume
+from classes.host import Host
+from classes.volume import Volume
 
 def fetchAllInfo():
 	info = {

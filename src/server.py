@@ -2,10 +2,10 @@
 import json, sys, os, traceback, html, datetime, zoneinfo, urllib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from http.cookies import SimpleCookie
-from tracking import getAllInfo, fetchAllInfo
-from schedule_tracker import updateScheduleTracker
+from utils.tracking import getAllInfo, fetchAllInfo
+from utils.schedule_tracker import updateScheduleTracker
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from auth import checkAuth, authenticate, setAuthCookies, AuthException
+from utils.auth import checkAuth, authenticate, setAuthCookies, AuthException
 
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")

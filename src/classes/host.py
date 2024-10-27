@@ -1,6 +1,6 @@
 import yaml, fabric
 import os
-from volume import Volume
+from classes.volume import Volume
 
 with open("config.yaml") as config_yaml:
 	config = yaml.safe_load(config_yaml)

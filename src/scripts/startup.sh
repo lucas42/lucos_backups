@@ -9,6 +9,6 @@ env -0 | sed 's/"/\\"/g' | sed -z "s/\n/\\\\n/g" | sed 's/\x0/\n/g'| sed 's/=/="
 /usr/sbin/crond
 cat <> /var/log/cron.log&
 
-source init-agent.sh
+source scripts/init-agent.sh
 
-pipenv run python -u server.py
+pipenv run python -m server
