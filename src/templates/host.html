@@ -12,31 +12,24 @@
 		<lucos-navbar><a href="/hosts">{{host|title}}</a></lucos-navbar>
 		<main>
 			<div class="host">
-				<h2>Summary</h2>
-				<h3 id="{{host}}-backedupvols">Backed Up Volumes</h3>
+				<h2>Host Info</h2>
 				<table>
-					<thead>
-						<td>Volume Name</td>
-						<td>Source Host</td>
-						<td>Earliest Date</td>
-						<td>Latest Date</td>
-						<td>Backup Count</td>
-					</thead>
-					{% for file in info['backedup_volumes']:%}
 					<tr>
-						<td>{{file['name']}}</td>
-						<td>{{file['source_host']}}</td>
-						<td>{{file['earliest_date']}}</td>
-						<td>{{file['latest_date']}}</td>
-						<td>{{file['count']}}</td>
+						<td>Name:</td>
+						<td>{{host|title}}</td>
 					</tr>
-					{% else %}
 					<tr>
-						<td class="error" colspan="5">No Volumes Found</td>
+						<td>Domain:</td>
+						<td>{{info['domain']}}</td>
 					</tr>
-					{% endfor %}
 				</table>
-				<h3 id="{{host}}-volumes">Docker Volumes</h3>
+				<span class="disk-space">
+					<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
+				</span>
+			</div>
+			<div class="host">
+				<h2 id="volumes">Docker Volumes</h2>
+				<h3></h3>
 				<table>
 					<thead>
 						<td>Volume Name</td>
@@ -82,9 +75,6 @@
 					</tr>
 					{% endfor %}
 				</table>
-				<span class="disk-space">
-					<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
-				</span>
 			</div>
 			<div class="host">
 				<h2>Volume Backups</h2>

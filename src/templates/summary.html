@@ -2,41 +2,18 @@
 <!DOCTYPE html> 
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head>
-		<title>Backups</title>
+		<title>Backups | Summary</title>
 		<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<link rel="icon" href="/icon.png" />
 		<link href="/style.css" rel="stylesheet" type="text/css" />
 	</head>
 	<body>
-		<lucos-navbar>Backups</lucos-navbar>
+		<lucos-navbar>Backups | Summary</lucos-navbar>
 		<main>
 			{% for host, info in hosts.items(): %}
 				<div class="host">
 					<h2><a href="/hosts/{{host}}">Host: {{host|title}}</a></h2>
-					<h3 id="{{host}}-backedupvols">Backed Up Volumes</h3>
-					<table>
-						<thead>
-							<td>Volume Name</td>
-							<td>Source Host</td>
-							<td>Earliest Date</td>
-							<td>Latest Date</td>
-							<td>Backup Count</td>
-						</thead>
-						{% for file in info['backedup_volumes']:%}
-						<tr>
-							<td>{{file['name']}}</td>
-							<td>{{file['source_host']}}</td>
-							<td>{{file['earliest_date']}}</td>
-							<td>{{file['latest_date']}}</td>
-							<td>{{file['count']}}</td>
-						</tr>
-						{% else %}
-						<tr>
-							<td class="error" colspan="5">No Volumes Found</td>
-						</tr>
-						{% endfor %}
-					</table>
 					<h3 id="{{host}}-volumes">Docker Volumes</h3>
 					<table>
 						<thead>
@@ -76,6 +53,29 @@
 								</table>
 							</td>
 							<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
+						</tr>
+						{% else %}
+						<tr>
+							<td class="error" colspan="5">No Volumes Found</td>
+						</tr>
+						{% endfor %}
+					</table>
+					<h3 id="{{host}}-backedupvols">Volume Backups</h3>
+					<table>
+						<thead>
+							<td>Volume Name</td>
+							<td>Source Host</td>
+							<td>Earliest Date</td>
+							<td>Latest Date</td>
+							<td>Backup Count</td>
+						</thead>
+						{% for file in info['backedup_volumes']:%}
+						<tr>
+							<td>{{file['name']}}</td>
+							<td>{{file['source_host']}}</td>
+							<td>{{file['earliest_date']}}</td>
+							<td>{{file['latest_date']}}</td>
+							<td>{{file['count']}}</td>
 						</tr>
 						{% else %}
 						<tr>
