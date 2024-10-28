@@ -11,7 +11,7 @@
 	<body>
 		<lucos-navbar><a href="/hosts">{{host|title}}</a></lucos-navbar>
 		<main>
-			<div class="host">
+			<section>
 				<h2>Host Info</h2>
 				<table>
 					<tr>
@@ -26,8 +26,8 @@
 				<span class="disk-space">
 					<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
 				</span>
-			</div>
-			<div class="host">
+			</section>
+			<section>
 				<h2 id="volumes">Docker Volumes</h2>
 				<h3></h3>
 				<table>
@@ -75,8 +75,8 @@
 					</tr>
 					{% endfor %}
 				</table>
-			</div>
-			<div class="host">
+			</section>
+			<section>
 				<h2>Volume Backups</h2>
 
 				{% for backup in info['backedup_volumes']: %}
@@ -98,7 +98,7 @@
 					{% endfor %}
 				</table>
 				{% endfor %}
-			</div>
+			</section>
 		</main>
 		<footer>
 			Last updated: <time datetime="{{update_time}}">{{update_time|london_time}}</time> London Time

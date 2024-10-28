@@ -12,7 +12,7 @@
 		<lucos-navbar>Backups | Summary</lucos-navbar>
 		<main>
 			{% for host, info in hosts.items(): %}
-				<div class="host">
+				<section class="host">
 					<h2><a href="/hosts/{{host}}">Host: {{host|title}}</a></h2>
 					<h3 id="{{host}}-volumes">Docker Volumes</h3>
 					<table>
@@ -86,7 +86,7 @@
 					<span class="disk-space">
 						<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
 					</span>
-				</div>
+				</section>
 			{% endfor %}
 		</main>
 		<footer>
