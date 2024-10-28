@@ -72,7 +72,13 @@
 								<table class='backup_list'>
 								{% for backup in volume['backups'] %}
 									<tr>
-										<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['stored_host']|title}}:</a></td>
+										<td><a href="#{{backup['stored_host']}}-backedupvols">
+										{% if backup['is_local'] %}
+											Local:
+										{% else %}
+											{{backup['stored_host']|title}}:
+										{% endif %}
+										</a></td>
 										<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['latest_date']}}</a></td>
 									</tr>
 								{% else %}

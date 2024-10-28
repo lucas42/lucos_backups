@@ -60,7 +60,32 @@ class Host:
 			})
 		return backup_files
 
-	def getVolumeBackups(self):
+	def getLocalVolumeBackups(self):
+		filelist = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/local-volumes/*__*.tar.gz\' -exec du -sh {} \\;', hide=True).stdout.splitlines()
+		backupList = []
+		volumes = {}
+		for fileinfo in filelist:
+			size, filepath = fileinfo.split('	', 1)
+			parts = filepath.split('/', 4)
+			filename, extension = parts[4].split('.', 1)
+			volume, date = filename.split('__', 1)
+			if volume not in volumes:
+				volumes[volume] = Backup(
+					stored_host=self,
+					source_hostname=self.name,
+					type='volume',
+					name=volume,
+				)
+				backupList.append(volumes[volume])
+			volumes[volume].addInstance(
+				name=parts[4],
+				date=datetime.strptime(date, '%Y-%m-%d').date(),
+				size=size,
+				path=filepath,
+			)
+		return backupList
+
+	def getRemoteVolumeBackups(self):
 		filelist = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/hosts/*/volumes/*.*.tar.gz\' -exec du -sh {} \\;', hide=True).stdout.splitlines()
 		backupList = []
 		volumes = {}
@@ -86,6 +111,9 @@ class Host:
 				path=filepath,
 			)
 		return backupList
+
+	def getVolumeBackups(self):
+		return self.getLocalVolumeBackups() + self.getRemoteVolumeBackups()
 
 	def getData(self):
 		return {

@@ -24,6 +24,7 @@ class Backup:
 		return {
 			'source_host': self.source_hostname,
 			'stored_host': self.stored_host.name,
+			'is_local': self.source_hostname == self.stored_host.name,
 			'type': self.type,
 			'name': self.name,
 			'earliest_date': min(self.instances, key=lambda i:i['date'])['date'],

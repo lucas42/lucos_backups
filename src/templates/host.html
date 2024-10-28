@@ -100,19 +100,23 @@
 			<div class="host">
 				<h2>Volume Backups</h2>
 
-				{% for file in info['backedup_volumes']: %}
-				<h3>{{file['volume']}} from {{file['source_host']}} ({{file['count']}} backups)</h3>
+				{% for backup in info['backedup_volumes']: %}
+				{% if backup['is_local'] %}
+				<h3>{{backup['name']}} [Local backup] ({{backup['count']}} backups)</h3>
+				{% else %}
+				<h3>{{backup['name']}} from {{backup['source_host']}} ({{backup['count']}} backups)</h3>
+				{% endif %}
 				<table>
 					<thead>
 						<td>Filename</td>
 						<td>Date</td>
 						<td>Size</td>
 					</thead>
-					{% for backup in file['instances']: %}
+					{% for instance in backup['instances']: %}
 					<tr>
-						<td>{{backup['name']}}</td>
-						<td>{{backup['date']}}</td>
-						<td>{{backup['size']}}</td>
+						<td>{{instance['name']}}</td>
+						<td>{{instance['date']}}</td>
+						<td>{{instance['size']}}</td>
 					</tr>
 					{% endfor %}
 				</table>
