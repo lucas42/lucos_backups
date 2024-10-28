@@ -71,8 +71,14 @@
 							<table class='backup_list'>
 							{% for backup in volume['backups'] %}
 								<tr>
-									<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['stored_host']|title}}:</a></td>
-									<td><a href="#{{backup['stored_host']}}-backedupvols">{{backup['latest_date']}}</a></td>
+									<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['name']}}-{{backup['source_host']}}">
+										{% if backup['is_local'] %}
+											Local:
+										{% else %}
+											{{backup['stored_host']|title}}:
+										{% endif %}
+									</a></td>
+									<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['name']}}-{{backup['source_host']}}">{{backup['latest_date']}}</a></td>
 								</tr>
 							{% else %}
 								<tr>
@@ -101,11 +107,9 @@
 				<h2>Volume Backups</h2>
 
 				{% for backup in info['backedup_volumes']: %}
-				{% if backup['is_local'] %}
-				<h3>{{backup['name']}} [Local backup] ({{backup['count']}} backups)</h3>
-				{% else %}
-				<h3>{{backup['name']}} from {{backup['source_host']}} ({{backup['count']}} backups)</h3>
-				{% endif %}
+				<h3 id="backup-{{backup['name']}}-{{backup['source_host']}}">{{backup['name']}}
+				{% if backup['is_local'] %}[Local backup]{% else %}from {{backup['source_host']}}{% endif %}
+				({{backup['count']}} backups)</h3>
 				<table>
 					<thead>
 						<td>Filename</td>
