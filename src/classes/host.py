@@ -120,7 +120,6 @@ class Host:
 			'domain': self.domain,
 			'volumes': [vol.getData() for vol in self.getVolumes()],
 			'disk': self.checkDiskSpace(),
-			'backups': self.checkBackupFiles(),
 			'backedup_volumes': [backup.getData() for backup in self.getVolumeBackups()],
 		}
 

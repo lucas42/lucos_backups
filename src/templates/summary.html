@@ -14,23 +14,6 @@
 			{% for host, info in hosts.items(): %}
 				<div class="host">
 					<h2><a href="/hosts/{{host}}">Host: {{host|title}}</a></h2>
-					<h3>Backup Files</h3>
-					<table>
-						<thead>
-							<td>File Name</td>
-							<td>Modification Date</td>
-						</thead>
-						{% for file in info['backups']:%}
-						<tr>
-							<td>{{file['name']}}</td>
-							<td>{{file['date']}}</td>
-						</tr>
-						{% else %}
-						<tr>
-							<td class="error" colspan="2">No Files Found</td>
-						</tr>
-						{% endfor %}
-					</table>
 					<h3 id="{{host}}-backedupvols">Backed Up Volumes</h3>
 					<table>
 						<thead>
