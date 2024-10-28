@@ -11,7 +11,7 @@
 	<body>
 		<lucos-navbar><a href="/hosts">{{host|title}}</a></lucos-navbar>
 		<main>
-			<section>
+			<section id="host-info" class="mini-section">
 				<h2>Host Info</h2>
 				<table>
 					<tr>
@@ -23,13 +23,22 @@
 						<td>{{info['domain']}}</td>
 					</tr>
 				</table>
-				<span class="disk-space">
-					<h3>Disk Space</h3>: {{info['disk']['free_readable']}} available ({{info['disk']['used_percentage']}}% used).
-				</span>
+			</section>
+			<section id="disk-space" class="mini-section">
+				<h2>Disk Space</h2>
+				<table>
+					<tr>
+						<td>Used:</td>
+						<td>{{info['disk']['used_percentage']}}%</td>
+					</tr>
+					<tr>
+						<td>Available:</td>
+						<td>{{info['disk']['free_readable']}}</td>
+					</tr>
+				</table>
 			</section>
 			<section>
 				<h2 id="volumes">Docker Volumes</h2>
-				<h3></h3>
 				<table>
 					<thead>
 						<td>Volume Name</td>

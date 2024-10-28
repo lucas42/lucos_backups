@@ -11,9 +11,12 @@ section {
 	border-radius: 12px;
 	margin: 1em 0.5em;
 }
-
+section.mini-section {
+	display: inline-grid;
+	min-width: 250px;
+}
 section h2 {
-	margin: 0 -15px;
+	margin: 0 -15px 15px;
 	background-color: rgba(0, 0, 25, 0.7);
 	color: #ccc;
 	padding: 15px;
@@ -23,7 +26,7 @@ section h2 a {
 	color: inherit;
 }
 
-section table {
+section:not(.mini-section) table {
 	width: 100%;
 }
 section > table > tbody td {
