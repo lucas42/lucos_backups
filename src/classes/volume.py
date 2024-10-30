@@ -54,9 +54,9 @@ class Volume:
 	# NB: will replace any existing tarball for a volume of the same name
 	def archiveLocally(self):
 		print("Creating local archive of "+str(self))
-		archiveDirectory = "/srv/backups/local-volumes"
+		archiveDirectory = "/srv/backups/local/volume"
 		date = datetime.today().strftime('%Y-%m-%d')
-		archivePath = "{archive_directory}/{volume_name}__{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
+		archivePath = "{archive_directory}/{volume_name}.{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
 		self.host.connection.run("mkdir -p {}".format(archiveDirectory))
 		self.host.connection.run("docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind alpine:latest tar -C /raw-data -czf {archive_path} .".format(
 			volume_name=self.name,
@@ -64,15 +64,11 @@ class Volume:
 			archive_path=archivePath,
 		))
 		return (archivePath, date)
-	def backupTo(self, target_host):
-		(archive_path, date) = self.archiveLocally()
-		target_path = "/srv/backups/hosts/{}/volumes/{}.{}.tar.gz".format(self.host.name, self.name, date)
-		self.host.copyFileTo(archive_path, target_host, target_path)
 
 	# Backs up the volume to all available hosts (except the one the volume is on)
 	def backupToAll(self):
 		(archive_path, date) = self.archiveLocally()
-		target_path = "/srv/backups/hosts/{}/volumes/{}.{}.tar.gz".format(self.host.name, self.name, date)
+		target_path = "/srv/backups/host/{}/volume/".format(self.host.name, self.name, date)
 		for hostname in config["hosts"]:
 			target_domain = config["hosts"][hostname]["domain"]
 			if target_domain != self.host.domain:
