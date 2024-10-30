@@ -32,7 +32,7 @@ class Host:
 		return volumes
 
 	def copyFileTo(self, source_path, target_host, target_path):
-		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host))
+		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host), flush=True)
 		# Ensure the target directory exists
 		self.connection.run('ssh -o StrictHostKeyChecking=no {} mkdir -p {}'.format(target_host, os.path.dirname(target_path)), hide=True)
 		self.connection.run('scp {} {}:{}'.format(source_path, target_host, target_path), hide=True)

@@ -157,10 +157,10 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Allow", "POST")
 			self.end_headers()
 			return
-		print ("\033[0mTracking Backups...")
+		print ("\033[0mTracking Backups...", flush=True)
 		try:
 			fetchAllInfo()
-			print("\033[92m" + "Tracking completed successfully" + "\033[0m")
+			print("\033[92m" + "Tracking completed successfully" + "\033[0m", flush=True)
 			updateScheduleTracker(
 				system="lucos_backups_tracking",
 				success=True,
@@ -170,7 +170,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Location", "/")
 			self.end_headers()
 		except Exception as error:
-			print ("\033[91m** Error ** " + str(error) + "\033[0m")
+			print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 			updateScheduleTracker(
 				system="lucos_backups_tracking",
 				success=False,
@@ -187,5 +187,5 @@ class BackupsHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
 	server = HTTPServer(('', port), BackupsHandler)
-	print("Server started on port %s" % (port))
+	print("Server started on port %s" % (port), flush=True)
 	server.serve_forever()

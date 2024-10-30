@@ -16,7 +16,7 @@ def checkAuth(handler):
 		valid_tokens.append(token)
 		return True
 	except Exception as error:
-		print ("\033[91m** Authentication Error ** " + str(error) + "\033[0m")
+		print ("\033[91m** Authentication Error ** " + str(error) + "\033[0m", flush=True)
 		raise AuthException(str(error))
 
 def authenticate(handler):

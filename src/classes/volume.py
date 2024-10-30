@@ -53,7 +53,7 @@ class Volume:
 	# Creates a compressed tarball of the volume and saves it on the local drive
 	# NB: will replace any existing tarball for a volume of the same name
 	def archiveLocally(self):
-		print("Creating local archive of "+str(self))
+		print("Creating local archive of "+str(self), flush=True)
 		archiveDirectory = "/srv/backups/local/volume"
 		date = datetime.today().strftime('%Y-%m-%d')
 		archivePath = "{archive_directory}/{volume_name}.{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)

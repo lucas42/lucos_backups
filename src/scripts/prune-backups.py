@@ -4,7 +4,7 @@ from utils.loganne import loganneRequest
 from utils.schedule_tracker import updateScheduleTracker
 from classes.host import Host
 
-print ("\033[0mPruning Backups...")
+print ("\033[0mPruning Backups...", flush=True)
 pruneCount = 0
 try:
 	for host in Host.getAll():
@@ -16,7 +16,7 @@ try:
 				print("		{} instances deleted".format(numberPruned))
 			pruneCount += numberPruned
 		host.closeConnection()
-	print("\033[92mPruning Complete - {} backups pruned\033[0m".format(pruneCount))
+	print("\033[92mPruning Complete - {} backups pruned\033[0m".format(pruneCount), flush=True)
 	if pruneCount > 0:
 		loganneRequest({
 			"type":"prune-backups",
@@ -24,6 +24,6 @@ try:
 		})
 	updateScheduleTracker(system="lucos_backups_prune")
 except Exception as error:
-	print ("\033[91m** Error ** " + str(error) + "\033[0m")
+	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 	traceback.print_exception(error)
 	updateScheduleTracker(system="lucos_backups_prune", success=False, message=str(error))
