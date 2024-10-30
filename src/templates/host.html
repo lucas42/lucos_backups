@@ -49,7 +49,7 @@
 					</thead>
 					{% for volume in info['volumes']: %}
 					<tr>
-						<td>{{volume['name']}}</td>
+						<td>{{volume['name']|break_underscores}}</td>
 						<td>{{volume['description']}}</td>
 						<td class="effort {{volume['effort']['id']}}">{{volume['effort']['label']}}</td>
 						<td>
@@ -76,7 +76,7 @@
 							{% endfor %}
 							</table>
 						</td>
-						<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
+						<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']|break_underscores}}</a></td>
 					</tr>
 					{% else %}
 					<tr>
@@ -100,7 +100,7 @@
 					</thead>
 					{% for instance in backup['instances']: %}
 					<tr>
-						<td>{{instance['name']}}</td>
+						<td>{{instance['name']|break_underscores}}</td>
 						<td>{{instance['date']}}</td>
 						<td>{{instance['size']}}</td>
 					</tr>

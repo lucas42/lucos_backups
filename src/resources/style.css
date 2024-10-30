@@ -28,17 +28,22 @@ section h2 a {
 
 section:not(.mini-section) table {
 	width: 100%;
+	table-layout: fixed;
 }
 section > table > tbody td {
 	font-family: monospace;
 	font-weight: bolder;
 	padding: 2px 5px;
+	word-break: break-word;
+	overflow: hidden;
 }
 section > table > thead td {
 	background: rgba(0, 0, 25, 0.7);
 	color: #ccc;
 	padding: 6px;
 	border-radius: 3px;
+	word-break: break-word;
+	overflow: hidden;
 }
 section > table > tbody > tr > td.error {
 	color: #a00;
@@ -51,7 +56,6 @@ section > table > tr:nth-child(even) {
 }
 section > table a {
 	color: #444;
-	text-wrap: nowrap;
 }
 a[target=_blank]:after {
 	content: url("data:image/svg+xml,%3Csvg%20fill%3D%22none%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M10%206H6C4.89543%206%204%206.89543%204%208V18C4%2019.1046%204.89543%2020%206%2020H16C17.1046%2020%2018%2019.1046%2018%2018V14M14%204H20M20%204V10M20%204L10%2014%22%20stroke%3D%22%234A5568%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E");
@@ -62,7 +66,6 @@ a[target=_blank]:after {
 	border: solid;
 	border-radius: 5px;
 	text-align: center;
-	text-wrap: nowrap;
 	padding: 0 7px;
 	font-size: 12px;
 }
@@ -112,6 +115,14 @@ a[target=_blank]:after {
 .backup_list .skipped {
 	color: #999;
 	text-align: center;
+}
+.backup_list td {
+	font-size: 12px;
+}
+@media (max-width: 900px) {
+	.backup_list td {
+		display: block;
+	}
 }
 footer {
 	text-align: right;

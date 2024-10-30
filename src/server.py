@@ -16,9 +16,12 @@ except ValueError:
 
 def toLondonTime(value):
 	return value.astimezone(zoneinfo.ZoneInfo("Europe/London")).strftime('%H:%M %Y-%m-%d')
+def breakUnderscores(value):
+	return value.replace("_", "​_​")
 
 templateEnv = Environment(loader=FileSystemLoader("templates/"), autoescape=select_autoescape())
 templateEnv.filters["london_time"] = toLondonTime
+templateEnv.filters["break_underscores"] = breakUnderscores
 
 class BackupsHandler(BaseHTTPRequestHandler):
 	def do_GET(self):

@@ -25,7 +25,7 @@
 						</thead>
 						{% for volume in info['volumes']: %}
 						<tr>
-							<td>{{volume['name']}}</td>
+							<td>{{volume['name']|break_underscores}}</td>
 							<td>{{volume['description']}}</td>
 							<td class="effort {{volume['effort']['id']}}">{{volume['effort']['label']}}</td>
 							<td>
@@ -52,7 +52,7 @@
 								{% endfor %}
 								</table>
 							</td>
-							<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']}}</a></td>
+							<td><a href="{{volume['project']['link']}}" target="_blank">{{volume['project']['name']|break_underscores}}</a></td>
 						</tr>
 						{% else %}
 						<tr>
@@ -71,7 +71,7 @@
 						</thead>
 						{% for file in info['backedup_volumes']:%}
 						<tr>
-							<td>{{file['name']}}</td>
+							<td>{{file['name']|break_underscores}}</td>
 							<td>{{file['source_host']}}</td>
 							<td>{{file['earliest_date']}}</td>
 							<td>{{file['latest_date']}}</td>
