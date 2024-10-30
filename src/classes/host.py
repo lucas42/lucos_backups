@@ -60,66 +60,44 @@ class Host:
 			})
 		return backup_files
 
-	def getLocalVolumeBackups(self):
-		filelist = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/local/volume/*.*.tar.gz\' -exec du -sh {} \\;', hide=True).stdout.splitlines()
+	def getVolumeBackups(self):
+		rootDir = '/srv/backups/'
+		filelist = self.connection.run("find {rootDir} -wholename '{rootDir}**/volume/*.*.tar.gz' -exec {exec} \\;".format(rootDir=rootDir, exec='du -sh {}'), hide=True).stdout.splitlines()
 		backupList = []
-		volumes = {}
+		backups = {}
 		for fileinfo in filelist:
 			size, filepath = fileinfo.split('	', 1)
-			parts = filepath.split('/', 5)
-			volume, date, extension = parts[5].split('.', 2)
-			if volume not in volumes:
-				volumes[volume] = Backup(
-					stored_host=self,
-					source_hostname=self.name,
-					type=parts[4],
-					name=volume,
-				)
-				backupList.append(volumes[volume])
-			volumes[volume].addInstance(
-				name=parts[5],
-				date=datetime.strptime(date, '%Y-%m-%d').date(),
-				size=size,
-				path=filepath,
-			)
-		return backupList
-
-	def getRemoteVolumeBackups(self):
-		filelist = self.connection.run('find /srv/backups/ -wholename \'/srv/backups/host/*/volume/*.*.tar.gz\' -exec du -sh {} \\;', hide=True).stdout.splitlines()
-		backupList = []
-		volumes = {}
-		for fileinfo in filelist:
-			size, filepath = fileinfo.split('	', 1)
-			parts = filepath.split('/', 6)
-			volume, date, extension = parts[6].split('.', 2)
-			source_hostname = parts[4]
-			if volume not in volumes:
-				volumes[volume] = {}
-			if source_hostname not in volumes[volume]:
-				volumes[volume][source_hostname] = Backup(
+			directories = filepath.replace(rootDir, '').split('/')
+			location = directories.pop(0) # Should either be local or host
+			if location == 'host':
+				source_hostname=directories.pop(0)
+			else:
+				source_hostname = self.name
+			backup_type = directories.pop(0)
+			filename = directories.pop()
+			name, date, extension = filename.split('.', 2)
+			if name not in backups:
+				backups[name] = Backup(
 					stored_host=self,
 					source_hostname=source_hostname,
-					type=parts[5],
-					name=volume,
+					type=backup_type,
+					name=name,
 				)
-				backupList.append(volumes[volume][source_hostname])
-			volumes[volume][source_hostname].addInstance(
-				name=parts[6],
+				backupList.append(backups[name])
+			backups[name].addInstance(
+				name=filename,
 				date=datetime.strptime(date, '%Y-%m-%d').date(),
 				size=size,
 				path=filepath,
 			)
 		return backupList
-
-	def getVolumeBackups(self):
-		return self.getLocalVolumeBackups() + self.getRemoteVolumeBackups()
 
 	def getData(self):
 		return {
 			'domain': self.domain,
 			'volumes': [vol.getData() for vol in self.getVolumes()],
 			'disk': self.checkDiskSpace(),
-			'backedup_volumes': [backup.getData() for backup in self.getVolumeBackups()],
+			'backedup_volumes': sorted([backup.getData() for backup in self.getVolumeBackups()], key=lambda i:i['is_local'], reverse=True),
 		}
 
 	@classmethod
