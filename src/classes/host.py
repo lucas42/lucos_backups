@@ -7,7 +7,9 @@ import os
 from datetime import datetime
 from classes.volume import Volume
 from classes.backup import Backup
+from classes.oneoff import OneOffFile
 
+ROOT_DIR = '/srv/backups/'
 with open("config.yaml") as config_yaml:
 	config = yaml.safe_load(config_yaml)
 
@@ -30,6 +32,13 @@ class Host:
 		for raw_volume in raw_volumes:
 			volumes.append(Volume(self, raw_volume))
 		return volumes
+
+	def getOneOffFiles(self):
+		directory = "{ROOT_DIR}local/one-off/".format(ROOT_DIR=ROOT_DIR)
+		self.connection.run("mkdir -p {directory}".format(directory=directory))
+		self.connection.run("chmod g+w {directory}".format(directory=directory)) # Allow any user in the group to add files to the one-off directory
+		filelist = self.connection.run("find {directory} -mindepth 1".format(directory=directory), hide=True).stdout.splitlines()
+		return [OneOffFile(self, filepath) for filepath in filelist]
 
 	def copyFileTo(self, source_path, target_host, target_path):
 		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host), flush=True)
@@ -61,13 +70,12 @@ class Host:
 		return backup_files
 
 	def getVolumeBackups(self):
-		rootDir = '/srv/backups/'
-		filelist = self.connection.run("find {rootDir} -wholename '{rootDir}**/volume/*.*.tar.gz' -exec {exec} \\;".format(rootDir=rootDir, exec='du -sh {}'), hide=True).stdout.splitlines()
+		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}**/volume/*.*.tar.gz' -exec {exec} \\;".format(ROOT_DIR=ROOT_DIR, exec='du -sh {}'), hide=True).stdout.splitlines()
 		backupList = []
 		backups = {}
 		for fileinfo in filelist:
 			size, filepath = fileinfo.split('	', 1)
-			directories = filepath.replace(rootDir, '').split('/')
+			directories = filepath.replace(ROOT_DIR, '').split('/')
 			location = directories.pop(0) # Should either be local or host
 			if location == 'host':
 				source_hostname=directories.pop(0)
@@ -96,6 +104,7 @@ class Host:
 		return {
 			'domain': self.domain,
 			'volumes': [vol.getData() for vol in self.getVolumes()],
+			'one_off_files': [file.getData() for file in self.getOneOffFiles()],
 			'disk': self.checkDiskSpace(),
 			'backedup_volumes': sorted([backup.getData() for backup in self.getVolumeBackups()], key=lambda i:i['is_local'], reverse=True),
 		}

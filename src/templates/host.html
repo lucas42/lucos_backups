@@ -86,6 +86,23 @@
 				</table>
 			</section>
 			<section>
+				<h2>One-Off Files</h2>
+				<table>
+					<thead>
+						<td>Filename</td>
+					</thead>
+					{% for file in info['one_off_files']: %}
+					<tr>
+						<td>{{file['name']}}</td>
+					</tr>
+					{% else %}
+					<tr>
+						<td class="error" colspan="1">No One-Off Files</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</section>
+			<section>
 				<h2>Volume Backups</h2>
 
 				{% for backup in info['backedup_volumes']: %}
