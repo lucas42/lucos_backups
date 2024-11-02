@@ -29,7 +29,10 @@
 				<table>
 					<tr>
 						<td>Used:</td>
-						<td>{{info['disk']['used_percentage']}}%</td>
+						<td class="progress">
+							<span class="progress-bar" style="width:{{info['disk']['used_percentage']}}%"></span>
+							<span class="progress-label">{{info['disk']['used_percentage']}}%</span>
+						</td>
 					</tr>
 					<tr>
 						<td>Available:</td>
