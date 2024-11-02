@@ -97,18 +97,22 @@
 				</table>
 			</section>
 			<section>
-				<h2>One-Off Files</h2>
+				<h2 id="oneofffiles">One-Off Files</h2>
 				<table>
 					<thead>
 						<td>Filename</td>
+						<td>Size</td>
+						<td>Modification Date</td>
 					</thead>
 					{% for file in info['one_off_files']: %}
 					<tr>
 						<td>{{file['name']}}</td>
+						<td>{{file['size']}}</td>
+						<td>{{file['date']}}</td>
 					</tr>
 					{% else %}
 					<tr>
-						<td class="error" colspan="1">No One-Off Files</td>
+						<td class="error" colspan="3">No One-Off Files</td>
 					</tr>
 					{% endfor %}
 				</table>

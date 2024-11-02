@@ -37,8 +37,18 @@ class Host:
 		directory = "{ROOT_DIR}local/one-off/".format(ROOT_DIR=ROOT_DIR)
 		self.connection.run("mkdir -p {directory}".format(directory=directory))
 		self.connection.run("chmod g+w {directory}".format(directory=directory)) # Allow any user in the group to add files to the one-off directory
-		filelist = self.connection.run("find {directory} -mindepth 1".format(directory=directory), hide=True).stdout.splitlines()
-		return [OneOffFile(self, filepath) for filepath in filelist]
+		filelist = []
+		raw_files = self.connection.run("ls -l --human-readable --time-style=long-iso --literal {directory}".format(directory=directory), hide=True).stdout.splitlines()
+		del raw_files[0] # Drop the header line from ls
+		for file_info in raw_files:
+			cols = file_info.split(maxsplit=7)
+			filelist.append(OneOffFile(
+				host=self,
+				path=directory+cols[7],
+				modification_date=cols[5],
+				size=cols[4],
+			))
+		return filelist
 
 	def copyFileTo(self, source_path, target_host, target_path):
 		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host), flush=True)

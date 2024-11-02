@@ -7,10 +7,12 @@ import os
 from utils.config import getAllDomains
 
 class OneOffFile:
-	def __init__(self, host, filepath):
+	def __init__(self, host, path, modification_date, size):
 		self.host = host
-		self.filepath = filepath
-		self.name = os.path.basename(filepath)
+		self.filepath = path
+		self.name = os.path.basename(path)
+		self.modification_date = modification_date
+		self.size = size
 
 	def __str__(self):
 		return "<One-Off File {} on {}>".format(self.name, self.host.name)
@@ -28,4 +30,6 @@ class OneOffFile:
 		return {
 			'name': self.name,
 			'source_host': self.host.name,
+			'date': self.modification_date,
+			'size': self.size,
 		}

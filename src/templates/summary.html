@@ -60,6 +60,19 @@
 						</tr>
 						{% endfor %}
 					</table>
+					{% if info['one_off_files']: %}
+					<h3 id="{{ host }}_oneofffiles">One-off Files</h3>
+					<table>
+						<colgroup>
+							<col class="col-label" />
+							<col class="col-value" />
+						</colgroup>
+						<tr>
+							<td>Local Count:</td>
+							<td><a href="/hosts/{{host}}#oneofffiles">{{ info['one_off_files']|length }} files</a></td>
+						</tr>
+					</table>
+					{% endif %}
 					<h3 id="{{host}}-backedupvols">Volume Backups</h3>
 					<table>
 						<thead>
