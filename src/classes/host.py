@@ -86,12 +86,12 @@ class Host:
 			})
 		return backup_files
 
-	def getVolumeBackups(self):
-		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}**/volume/*.*.tar.gz' -exec {exec} \\;".format(ROOT_DIR=ROOT_DIR, exec='du -sh {}'), hide=True).stdout.splitlines()
+	def getBackups(self):
+		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\t\" -exec {exec}".format(ROOT_DIR=ROOT_DIR, exec='du -sh {} \\;'), hide=True).stdout.splitlines()
 		backupList = []
 		backups = {}
 		for fileinfo in filelist:
-			size, filepath = fileinfo.split('	', 1)
+			mod_date, size, filepath = fileinfo.split('	', 2)
 			directories = filepath.replace(ROOT_DIR, '').split('/')
 			location = directories.pop(0) # Should either be local or host
 			if location == 'host':
@@ -100,7 +100,16 @@ class Host:
 				source_hostname = self.name
 			backup_type = directories.pop(0)
 			filename = directories.pop()
-			name, date, extension = filename.split('.', 2)
+			if backup_type == 'volume':
+				name, raw_date, extension = filename.split('.', 2)
+				try:
+					date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+				except Exception as error:
+					print("\033[91m** Warn ** {} File: {}\033[0m".format(error, filepath), flush=True)
+					date = datetime.strptime(mod_date, '%Y-%m-%d').date()
+			else:
+				name = filename
+				date = datetime.strptime(mod_date, '%Y-%m-%d').date()
 			if name not in backups:
 				backups[name] = Backup(
 					stored_host=self,
@@ -111,7 +120,7 @@ class Host:
 				backupList.append(backups[name])
 			backups[name].addInstance(
 				name=filename,
-				date=datetime.strptime(date, '%Y-%m-%d').date(),
+				date=date,
 				size=size,
 				path=filepath,
 			)
@@ -123,7 +132,7 @@ class Host:
 			'volumes': [vol.getData() for vol in self.getVolumes()],
 			'one_off_files': [file.getData() for file in self.getOneOffFiles()],
 			'disk': self.checkDiskSpace(),
-			'backedup_volumes': sorted([backup.getData() for backup in self.getVolumeBackups()], key=lambda i:i['is_local'], reverse=True),
+			'backups': sorted([backup.getData() for backup in self.getBackups()], key=lambda i:i['is_local'], reverse=True),
 		}
 
 	@classmethod

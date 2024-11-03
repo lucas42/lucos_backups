@@ -6,21 +6,28 @@ def fetchAllInfo():
 	info = {
 		"hosts": {},
 		"volumes": [],
+		"one_off_files": [],
 		"notInConfig": [],
 		"notOnHost": [],
-		"backedup_volumes": [],
+		"backups": [],
 	}
 	for host in Host.getAll():
 		info["hosts"][host.name] = host.getData()
 		info["volumes"] += info["hosts"][host.name]["volumes"]
-		info["backedup_volumes"] += info["hosts"][host.name]["backedup_volumes"]
+		info["one_off_files"] += info["hosts"][host.name]["one_off_files"]
+		info["backups"] += info["hosts"][host.name]["backups"]
 	for volume in info["volumes"]:
 		if not volume["known"]:
 			info["notInConfig"].append(volume["name"])
 		volume["backups"] = []
-		for backup in info["backedup_volumes"]:
+		for backup in info["backups"]:
 			if backup['type'] == "volume" and volume["name"] == backup["name"] and volume["source_host"] == backup["source_host"]:
 				volume["backups"].append(backup)
+	for file in info["one_off_files"]:
+		file["backups"] = []
+		for backup in info["backups"]:
+			if backup['type'] == "one-off" and file["name"] == backup["name"] and file["source_host"] == backup["source_host"]:
+				file["backups"].append(backup)
 
 	info["notOnHost"] = Volume.getMissing(info["volumes"])
 	info["update_time"] = datetime.datetime.now(datetime.timezone.utc)
