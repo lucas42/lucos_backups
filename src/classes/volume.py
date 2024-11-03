@@ -77,6 +77,13 @@ class Volume:
 	def shouldBackup(self):
 		return not self.data["skip_backup"]
 
+	def backup(self):
+		if self.shouldBackup():
+			self.backupToAll()
+			return 1
+		else:
+			return 0
+
 	def getData(self):
 		return self.data
 

@@ -17,14 +17,18 @@ class OneOffFile:
 	def __str__(self):
 		return "<One-Off File {} on {}>".format(self.name, self.host.name)
 
-	# Backs up the volume to all available hosts (except the one the volume is on)
-	def backupToAll(self):
+	def backup(self):
+		backupMade = False
 		target_directory = "/srv/backups/host/{}/one-off/".format(self.host.name)
-		for target_domain in getAllDomains(ignore=self.host):
+		for target_domain in getAllDomains(ignore_host=self.host):
+			if self.host.fileExistsRemotely(target_domain, target_directory, self.name):
+				continue
 			self.host.copyFileTo(self.filepath, target_domain, target_directory)
-
-	def shouldBackup(self):
-		return True
+			backupMade = True
+		if backupMade:
+			return 1
+		else:
+			return 0
 
 	def getData(self):
 		return {

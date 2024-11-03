@@ -2,7 +2,7 @@
 Host
 A particular computer (virutal or physical), which has files to be backed up from, can store backups, or both.
 '''
-import yaml, fabric
+import yaml, fabric, invoke
 import os
 from datetime import datetime
 from classes.volume import Volume
@@ -54,7 +54,14 @@ class Host:
 		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host), flush=True)
 		# Ensure the target directory exists
 		self.connection.run('ssh -o StrictHostKeyChecking=no {} mkdir -p {}'.format(target_host, os.path.dirname(target_path)), hide=True)
-		self.connection.run('scp {} {}:{}'.format(source_path, target_host, target_path), hide=True)
+		self.connection.run('scp "{}" {}:"{}"'.format(source_path, target_host, target_path), hide=True)
+
+	def fileExistsRemotely(self, target_host, target_directory, target_filename):
+		try:
+			self.connection.run('ssh -o StrictHostKeyChecking=no {} \'ls -p "{}"\''.format(target_host, target_directory+target_filename), hide=True)
+			return True
+		except invoke.exceptions.UnexpectedExit as e:
+			return False
 
 	def checkDiskSpace(self):
 		raw_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True).stdout.strip())

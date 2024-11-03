@@ -8,13 +8,13 @@ from classes.host import Host
 print ("\033[0mStarting Backups...", flush=True)
 
 try:
-	volumeCount = 0
+	backupCount = 0
 	for host in Host.getAll():
 		print("Host:", host.domain, flush=True)
 		for volume in host.getVolumes():
-			if volume.shouldBackup():
-				volume.backupToAll()
-				volumeCount += 1
+			backupCount += volume.backup()
+		for file in host.getOneOffFiles():
+			backupCount += file.backup()
 		host.closeConnection()
 	print("\033[92m" + "Backups Complete" + "\033[0m", flush=True)
 except Exception as error:
@@ -23,6 +23,6 @@ except Exception as error:
 
 loganneRequest({
 	"type":"backups",
-	"humanReadable": "{} volumes successfully backed up".format(volumeCount),
+	"humanReadable": "{} archives successfully backed up".format(backupCount),
 })
 updateScheduleTracker()
