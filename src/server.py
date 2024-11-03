@@ -121,7 +121,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		self.wfile.write(bytes(json.dumps(output, indent="\t")+"\n\n", "utf-8"))
 	def summaryController(self):
 		checkAuth(self)
-		output = templateEnv.get_template("summary.html").render(getAllInfo())
+		output = templateEnv.get_template("summary.html.jinja").render(getAllInfo())
 		self.send_response(200)
 		self.send_header("Content-type", "text/html")
 		setAuthCookies(self)
@@ -134,7 +134,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		if hostname not in info['hosts']:
 			self.send_error(404, "Host {} Not Found".format(hostname))
 			return
-		output = templateEnv.get_template("host.html").render({
+		output = templateEnv.get_template("host.html.jinja").render({
 			'host': hostname,
 			'info': info['hosts'][hostname],
 			'update_time': info['update_time'],
