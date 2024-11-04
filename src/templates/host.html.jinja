@@ -114,14 +114,14 @@
 							<table class='backup_list'>
 							{% for backup in file['backups'] %}
 								<tr>
-									<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">
+									<td><a href="/hosts/{{backup['stored_host']}}#backup-one-off">
 										{% if backup['is_local'] %}
 											Local:
 										{% else %}
 											{{backup['stored_host']|title}}:
 										{% endif %}
 									</a></td>
-									<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">{{backup['latest_date']}}</a></td>
+									<td><a href="/hosts/{{backup['stored_host']}}#backup-one-off">{{backup['latest_date']}}</a></td>
 								</tr>
 							{% else %}
 								<tr>
@@ -139,27 +139,60 @@
 				</table>
 			</section>
 			<section>
-				<h2>Backups</h2>
+				<h2>Grouped Backups</h2>
 
 				{% for backup in info['backups']: %}
-				<h3 id="backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">{{backup['type']|title}} `{{backup['name']}}`
-				{% if backup['is_local'] %}[Local backup]{% else %}from {{backup['source_host']}}{% endif %}
-				({{backup['count']}} backups)</h3>
+					{% if backup['type'] != "one-off" %}
+					<h3 id="backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">{{backup['type']|title}} `{{backup['name']}}`
+					{% if backup['is_local'] %}[Local backup]{% else %}from {{backup['source_host']}}{% endif %}
+					({{backup['count']}} backups)</h3>
+					<table>
+						<thead>
+							<td>Filename</td>
+							<td>Date</td>
+							<td>Size</td>
+						</thead>
+						{% for instance in backup['instances']: %}
+						<tr>
+							<td>{{instance['name']|break_underscores}}</td>
+							<td>{{instance['date']}}</td>
+							<td>{{instance['size']}}</td>
+						</tr>
+						{% endfor %}
+					</table>
+					{% endif %}
+				{% endfor %}
+			</section>
+			<section>
+				<h2 id="backup-one-off">One-Off Backups</h2>
 				<table>
 					<thead>
 						<td>Filename</td>
+						<td>Source</td>
 						<td>Date</td>
 						<td>Size</td>
 					</thead>
-					{% for instance in backup['instances']: %}
-					<tr>
-						<td>{{instance['name']|break_underscores}}</td>
-						<td>{{instance['date']}}</td>
-						<td>{{instance['size']}}</td>
-					</tr>
-					{% endfor %}
+						{% for backup in info['backups']: %}
+						{% if backup['type'] == "one-off" %}
+						{% for instance in backup['instances']: %}
+						<tr>
+							<td>{{instance['name']|break_underscores}}</td>
+							<td>
+								<a href="/hosts/{{ backup['source_host'] }}#oneofffiles">
+									{% if backup['is_local'] %}Local{% else %}{{backup['source_host']}}{% endif %}
+								</a>
+							</td>
+							<td>{{instance['date']}}</td>
+							<td>{{instance['size']}}</td>
+						</tr>
+						{% endfor %}
+						{%  endif %}
+						{% else %}
+						<tr>
+							<td class="error" colspan="4">No One-Off Backups</td>
+						</tr>
+						{% endfor %}
 				</table>
-				{% endfor %}
 			</section>
 		</main>
 		<footer>
