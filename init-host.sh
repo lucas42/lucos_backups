@@ -34,6 +34,10 @@ fi
 echo "Adding $USERNAME to docker group"
 ssh -T $HOSTNAME "sudo usermod -G docker $USERNAME"
 
+dailyuser=`ssh -T $HOSTNAME whoami`
+echo "Adding ${dailyuser} to ${USERNAME} group"
+ssh -T $HOSTNAME "sudo usermod -a -G ${USERNAME} ${dailyuser}"
+
 echo "Saving public SSH key"
 ssh -T $HOSTNAME "sudo mkdir -p /home/${USERNAME}/.ssh && sudo chown $USERNAME /home/${USERNAME}/.ssh && sudo chmod 700 /home/${USERNAME}/.ssh"
 ssh -T $HOSTNAME "sudo touch /home/${USERNAME}/.ssh/authorized_keys && sudo chown $USERNAME /home/${USERNAME}/.ssh/authorized_keys && sudo chmod 700 /home/${USERNAME}/.ssh/authorized_keys"
