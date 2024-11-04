@@ -110,15 +110,16 @@ class Host:
 			else:
 				name = filename
 				date = datetime.strptime(mod_date, '%Y-%m-%d').date()
-			if name not in backups:
-				backups[name] = Backup(
+			key = source_hostname + "/" + name
+			if key not in backups:
+				backups[key] = Backup(
 					stored_host=self,
 					source_hostname=source_hostname,
 					type=backup_type,
 					name=name,
 				)
-				backupList.append(backups[name])
-			backups[name].addInstance(
+				backupList.append(backups[key])
+			backups[key].addInstance(
 				name=filename,
 				date=date,
 				size=size,
