@@ -50,6 +50,11 @@ class Backup:
 	Uses periods of 6 days to deliberately not align with weeks, to ensure restore points are available from various days of the week.
 	'''
 	def toKeep(self, instance):
+
+		# Never prune a lone instance of a given backup (eg one-off files)
+		if len(self.instances) == 1:
+			return True
+
 		age = date.today() - instance["date"]
 
 		# For the first week, keep every instance

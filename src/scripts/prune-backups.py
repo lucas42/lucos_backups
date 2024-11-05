@@ -9,8 +9,8 @@ pruneCount = 0
 try:
 	for host in Host.getAll():
 		print("Host: {}".format(host.domain))
-		for backup in host.getVolumeBackups():
-			print("	Volume {} from {} - has {} instances".format(backup.name, backup.source_hostname, len(backup.instances)))
+		for backup in host.getBackups():
+			print("	Backup {} from {} - has {} instance(s)".format(backup.name, backup.source_hostname, len(backup.instances)))
 			numberPruned = backup.prune(dryrun=False)
 			if numberPruned > 0:
 				print("		{} instances deleted".format(numberPruned))
