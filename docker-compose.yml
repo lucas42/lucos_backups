@@ -9,5 +9,6 @@ services:
     environment:
       - PORT=8027
       - SSH_PRIVATE_KEY
+      - GITHUB_KEY
     restart: always
     network_mode: host

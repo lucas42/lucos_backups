@@ -103,6 +103,32 @@
 					</span>
 				</section>
 			{% endfor %}
+
+			<section>
+				<h2 id="repositories">Github Repositories</h2>
+				<table>
+					<thead>
+						<td>Name</td>
+						<td>Size</td>
+						<td>Fork?</td>
+						<td>Archived?</td>
+						<td>Latest Backups</td>
+					</thead>
+						{% for repository in repositories: %}
+						<tr>
+							<td><a href="{{ repository['url'] }}" target="_blank">{{ repository['name']|break_underscores }}</a></td>
+							<td>{{ repository['size'] }}K</td>
+							<td>{{ repository['fork'] }}</td>
+							<td>{{ repository['archived'] }}</td>
+							<td class="error">Not yet implemented</td>
+						</tr>
+						{% else %}
+						<tr>
+							<td class="error" colspan="5">No Repositories</td>
+						</tr>
+						{% endfor %}
+				</table>
+			</section>
 		</main>
 		<footer>
 			Last updated: <time datetime="{{update_time}}">{{update_time|london_time}}</time> London Time

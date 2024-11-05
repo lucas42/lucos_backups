@@ -1,6 +1,7 @@
 import datetime
 from classes.host import Host
 from classes.volume import Volume
+from classes.repository import Repository
 
 def fetchAllInfo():
 	info = {
@@ -10,6 +11,7 @@ def fetchAllInfo():
 		"notInConfig": [],
 		"notOnHost": [],
 		"backups": [],
+		"repositories": [],
 	}
 	for host in Host.getAll():
 		info["hosts"][host.name] = host.getData()
@@ -31,6 +33,8 @@ def fetchAllInfo():
 
 	info["notOnHost"] = Volume.getMissing(info["volumes"])
 	info["update_time"] = datetime.datetime.now(datetime.timezone.utc)
+
+	info["repositories"] = [repo.getData() for repo in Repository.getAll()]
 
 	# Only updates the global variable once all info is fetched
 	global latestInfo
