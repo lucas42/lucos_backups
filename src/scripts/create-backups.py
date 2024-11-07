@@ -3,6 +3,7 @@ import traceback
 from utils.loganne import loganneRequest
 from utils.schedule_tracker import updateScheduleTracker
 from classes.host import Host
+from classes.repository import Repository
 
 # Record in loganne that the script has started
 print ("\033[0mStarting Backups...", flush=True)
@@ -16,6 +17,8 @@ try:
 		for file in host.getOneOffFiles():
 			backupCount += file.backup()
 		host.closeConnection()
+	for repo in Repository.getAll():
+		backupCount += repo.backup()
 	print("\033[92m" + "Backups Complete" + "\033[0m", flush=True)
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)

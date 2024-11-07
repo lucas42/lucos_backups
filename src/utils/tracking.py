@@ -18,6 +18,7 @@ def fetchAllInfo():
 		info["volumes"] += info["hosts"][host.name]["volumes"]
 		info["one_off_files"] += info["hosts"][host.name]["one_off_files"]
 		info["backups"] += info["hosts"][host.name]["backups"]
+	info["repositories"] = [repo.getData() for repo in Repository.getAll()]
 	for volume in info["volumes"]:
 		if not volume["known"]:
 			info["notInConfig"].append(volume["name"])
@@ -30,11 +31,14 @@ def fetchAllInfo():
 		for backup in info["backups"]:
 			if backup['type'] == "one-off" and file["name"] == backup["name"] and file["source_host"] == backup["source_host"]:
 				file["backups"].append(backup)
+	for repo in info["repositories"]:
+		repo["backups"] = []
+		for backup in info["backups"]:
+			if backup['type'] == "repository" and repo["name"] == backup["name"]:
+				repo["backups"].append(backup)
 
 	info["notOnHost"] = Volume.getMissing(info["volumes"])
 	info["update_time"] = datetime.datetime.now(datetime.timezone.utc)
-
-	info["repositories"] = [repo.getData() for repo in Repository.getAll()]
 
 	# Only updates the global variable once all info is fetched
 	global latestInfo

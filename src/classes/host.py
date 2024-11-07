@@ -96,12 +96,14 @@ class Host:
 			location = directories.pop(0) # Should either be local or host
 			if location == 'host':
 				source_hostname=directories.pop(0)
-			else:
+			elif location == 'local':
 				source_hostname = self.name
+			elif location == 'external':
+				source_hostname=directories.pop(0)
 			backup_type = directories.pop(0)
 			filename = directories.pop()
-			if backup_type == 'volume':
-				name, raw_date, extension = filename.split('.', 2)
+			if backup_type == 'volume' or backup_type == 'repository':
+				name, raw_date, archive_ext, compression_ext = filename.rsplit('.', 3)
 				try:
 					date = datetime.strptime(raw_date, '%Y-%m-%d').date()
 				except Exception as error:

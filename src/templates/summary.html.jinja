@@ -32,14 +32,14 @@
 								<table class='backup_list'>
 								{% for backup in volume['backups'] %}
 									<tr>
-										<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['name']}}-{{backup['source_host']}}">
+										<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">
 											{% if backup['is_local'] %}
 												Local:
 											{% else %}
 												{{backup['stored_host']|title}}:
 											{% endif %}
 										</a></td>
-										<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['name']}}-{{backup['source_host']}}">{{backup['latest_date']}}</a></td>
+										<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">{{backup['latest_date']}}</a></td>
 									</tr>
 								{% else %}
 									<tr>
@@ -120,7 +120,22 @@
 							<td>{{ repository['size'] }}K</td>
 							<td>{{ repository['fork'] }}</td>
 							<td>{{ repository['archived'] }}</td>
-							<td class="error">Not yet implemented</td>
+							<td>
+								<table class='backup_list'>
+								{% for backup in repository['backups'] %}
+									<tr>
+										<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">
+											{{backup['stored_host']|title}}:
+										</a></td>
+										<td><a href="/hosts/{{backup['stored_host']}}#backup-{{backup['type']}}-{{backup['name']}}-{{backup['source_host']}}">{{backup['latest_date']}}</a></td>
+									</tr>
+								{% else %}
+									<tr>
+										<td class="error" colspan="2">No Backups</td>
+									</tr>
+								{% endfor %}
+								</table>
+							</td>
 						</tr>
 						{% else %}
 						<tr>
