@@ -64,7 +64,7 @@ class Backup:
 		elif age < timedelta(weeks=5):
 			return instance["date"].day % 6 == 0
 		# For the first year, keep the instance from the sixth of each month
-		elif agent < timedelta(weeks=52):
+		elif age < timedelta(weeks=52):
 			return instance["date"].day == 6
 		# After that, keep the instance from the sixth of January each year
 		else:
