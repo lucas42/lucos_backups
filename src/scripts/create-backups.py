@@ -20,12 +20,13 @@ try:
 	for repo in Repository.getAll():
 		backupCount += repo.backup()
 	print("\033[92m" + "Backups Complete" + "\033[0m", flush=True)
+	if backupCount > 0:
+		loganneRequest({
+			"type":"backups",
+			"humanReadable": "{} archives successfully backed up".format(backupCount),
+		})
+	updateScheduleTracker()
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 	traceback.print_exception(error)
-
-loganneRequest({
-	"type":"backups",
-	"humanReadable": "{} archives successfully backed up".format(backupCount),
-})
-updateScheduleTracker()
+	updateScheduleTracker(success=False, message=str(error))
