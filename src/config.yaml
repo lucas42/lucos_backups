@@ -60,6 +60,9 @@ volumes:
     lucos_creds_store:
         description: Credentials used by lucos services.  Both between services within lucos and to third party services.
         effort: considerable
+    lucos_media_manager_stateFile:
+        description: The current state of media player, including playlist, volume, is-playing and connected devices.
+        effort: tolerable
 
 hosts:
     avalon:
