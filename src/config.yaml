@@ -66,6 +66,9 @@ volumes:
     lucos_locations_store:
         description: Historic location data
         effort: huge
+    lucos_locations_config:
+        description: Configuration for OwnTracks Recorder
+        effort: automatic
 
 hosts:
     avalon:
