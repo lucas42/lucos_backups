@@ -63,6 +63,9 @@ volumes:
     lucos_media_manager_stateFile:
         description: The current state of media player, including playlist, volume, is-playing and connected devices.
         effort: tolerable
+    lucos_locations_store:
+        description: Historic location data
+        effort: huge
 
 hosts:
     avalon:
