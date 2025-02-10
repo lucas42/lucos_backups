@@ -29,7 +29,11 @@ class Volume:
 		for label in data["Labels"].split(","):
 			key, value = label.split("=", 1)
 			labels[key] = value
-		project = labels['com.docker.compose.project']
+		try:
+			project = labels['com.docker.compose.project']
+		except:
+			raise Exception("Project label missing from volume "+self.name)
+
 		self.effort = {
 			'id': effort_id,
 			'label': config["effort_labels"][effort_id],
