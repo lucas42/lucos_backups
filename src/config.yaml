@@ -69,6 +69,12 @@ volumes:
     lucos_locations_config:
         description: Configuration for OwnTracks Recorder
         effort: automatic
+    lucos_locations_mosquitto_data:
+        description: Message queue data
+        effort: automatic
+    lucos_locations_mosquitto_log:
+        description: Message queue logs
+        effort: automatic
 
 hosts:
     avalon:
