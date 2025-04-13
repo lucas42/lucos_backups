@@ -79,7 +79,7 @@ volumes:
 hosts:
     avalon:
         domain: avalon.s.l42.eu
-    xwing:
-        domain: xwing.s.l42.eu
+    #xwing:
+    #    domain: xwing.s.l42.eu
     salvare:
         domain: salvare.s.l42.eu
