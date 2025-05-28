@@ -130,13 +130,17 @@ class Host:
 		return backupList
 
 	def getData(self):
-		return {
-			'domain': self.domain,
-			'volumes': [vol.getData() for vol in self.getVolumes()],
-			'one_off_files': [file.getData() for file in self.getOneOffFiles()],
-			'disk': self.checkDiskSpace(),
-			'backups': sorted([backup.getData() for backup in self.getBackups()], key=lambda i:i['is_local'], reverse=True),
-		}
+		try:
+			return {
+				'domain': self.domain,
+				'volumes': [vol.getData() for vol in self.getVolumes()],
+				'one_off_files': [file.getData() for file in self.getOneOffFiles()],
+				'disk': self.checkDiskSpace(),
+				'backups': sorted([backup.getData() for backup in self.getBackups()], key=lambda i:i['is_local'], reverse=True),
+			}
+		except Exception as error:
+			print("\033[91m** Error ** Problem retrieving data from {}: {}\033[0m".format(self.domain, error), flush=True)
+			raise error
 
 	@classmethod
 	def getAll(cls):
