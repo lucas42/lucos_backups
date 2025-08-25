@@ -5,6 +5,18 @@ main {
 	max-width: 1250px;
 	margin: auto;
 }
+nav {
+	float left;
+}
+nav a {
+	color: #555;
+	font-size: 17px;
+	font-weight: bold;
+	text-shadow: 0 0 2px #fff;
+}
+nav a:hover {
+	color: #002;
+}
 section {
 	background-color: rgba(200, 200, 200, 0.8);
 	padding: 1px 15px 15px;
