@@ -75,6 +75,12 @@ volumes:
     lucos_locations_mosquitto_log:
         description: Message queue logs
         effort: automatic
+    lucos_eolas_db_data:
+        description: Personally curated Knowledge Graph
+        effort: considerable
+    lucos_eolas_staticfiles:
+        description: Sharing static assets between docker containers
+        effort: automatic
 
 hosts:
     avalon:
