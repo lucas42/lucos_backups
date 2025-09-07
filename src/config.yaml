@@ -81,6 +81,9 @@ volumes:
     lucos_eolas_staticfiles:
         description: Sharing static assets between docker containers
         effort: automatic
+    lucos_arachne_fuseki_data:
+        description: Data from the arachne triple store, gathered from other lucOS systems
+        effort: automatic
 
 hosts:
     avalon:
