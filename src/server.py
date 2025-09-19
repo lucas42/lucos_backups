@@ -47,6 +47,10 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				self.staticFileController("style.css", "text/css")
 			elif (self.parsed.path == "/icon.png"):
 				self.staticFileController("icon.png", "image/png")
+			elif (self.parsed.path == "/maskable_icon.png"):
+				self.staticFileController("maskable_icon.png", "image/png")
+			elif (self.parsed.path == "/manifest.json"):
+				self.staticFileController("manifest.json", "application/manifest+json")
 			elif (self.parsed.path == "/_info"):
 				self.infoController()
 			elif (self.parsed.path == "/refresh-tracking"):

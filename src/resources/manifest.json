@@ -1,0 +1,23 @@
+{
+	"name": "lucOS Backups",
+	"short_name": "Backups",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"theme_color": "#002",
+	"background_color": "#eee",
+	"icons":[
+		{
+			"src": "/icon.png",
+			"sizes": "200x200",
+			"type": "image/png",
+			"purpose": "any monochrome"
+		},
+		{
+			"src": "/maskable_icon.png",
+			"sizes": "133x133",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	]
+}
