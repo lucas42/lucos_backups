@@ -84,6 +84,7 @@ volumes:
     lucos_arachne_fuseki_data:
         description: Data from the arachne triple store, gathered from other lucOS systems
         effort: automatic
+        skip_backup: true
     lucos_media_metadata_api_exports:
         description: Automated exports of media metadata
         effort: automatic
