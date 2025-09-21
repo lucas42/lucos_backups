@@ -85,6 +85,10 @@ volumes:
         description: Data from the arachne triple store, gathered from other lucOS systems
         effort: automatic
         skip_backup: true
+    lucos_arachne_typesense_data:
+        description: Data from the arachne search index, gathered from other lucOS systems
+        effort: automatic
+        skip_backup: true
     lucos_media_metadata_api_exports:
         description: Automated exports of media metadata
         effort: automatic
