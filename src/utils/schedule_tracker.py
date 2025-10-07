@@ -1,4 +1,4 @@
-import json, requests
+import json, requests, os
 
 SCHEDULE_TRACKER_ENDPOINT = os.environ.get('SCHEDULE_TRACKER_ENDPOINT')
 if not SCHEDULE_TRACKER_ENDPOINT:
