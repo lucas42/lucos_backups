@@ -9,5 +9,6 @@ services:
       - PORT=8027
       - SSH_PRIVATE_KEY
       - GITHUB_KEY
+      - SCHEDULE_TRACKER_ENDPOINT
     restart: always
     network_mode: host
