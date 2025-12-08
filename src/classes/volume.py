@@ -9,6 +9,9 @@ from datetime import datetime
 with open("config.yaml") as config_yaml:
 	config = yaml.safe_load(config_yaml)
 
+with open("effort_labels.yaml") as effort_labels_yaml:
+	effort_labels = yaml.safe_load(effort_labels_yaml)
+
 class Volume:
 	def __init__(self, host, rawjson):
 		self.host = host
@@ -36,7 +39,7 @@ class Volume:
 
 		self.effort = {
 			'id': effort_id,
-			'label': config["effort_labels"][effort_id],
+			'label': effort_labels[effort_id],
 		}
 		self.data = {
 			'name': self.name,
