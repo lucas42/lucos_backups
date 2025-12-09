@@ -3,7 +3,6 @@ import json, sys, os, traceback, html, datetime, zoneinfo, urllib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from http.cookies import SimpleCookie
 from utils.tracking import getAllInfo, fetchAllInfo
-from utils.schedule_tracker import updateScheduleTracker
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from utils.auth import checkAuth, authenticate, setAuthCookies, AuthException
 from utils.config import fetchConfig
@@ -163,26 +162,12 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Allow", "POST")
 			self.end_headers()
 			return
-		print ("\033[0mTracking Backups...", flush=True)
 		try:
 			fetchAllInfo()
-			print("\033[92m" + "Tracking completed successfully" + "\033[0m", flush=True)
-			updateScheduleTracker(
-				system="lucos_backups_tracking",
-				success=True,
-				frequency=60*60, # 1 hour in seconds
-			)
 			self.send_response(303)
 			self.send_header("Location", "/")
 			self.end_headers()
 		except Exception as error:
-			print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
-			updateScheduleTracker(
-				system="lucos_backups_tracking",
-				success=False,
-				message=str(error),
-				frequency=60*60, # 1 hour in seconds
-			)
 			self.send_response(500)
 			self.send_header("Content-type", "text/plain")
 			self.end_headers()
@@ -193,7 +178,6 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Allow", "POST")
 			self.end_headers()
 			return
-		print ("\033[0mFetching config...", flush=True)
 		try:
 			fetchConfig()
 			self.send_response(303)
