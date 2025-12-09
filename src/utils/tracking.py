@@ -17,8 +17,6 @@ def fetchAllInfo():
 			"repositories": [],
 		}
 		for host in Host.getAll():
-			if host.name == 'virgon-express': # Not currently online.  TODO: handle offline hosts more gracefully
-				continue
 			info["hosts"][host.name] = host.getData()
 			info["volumes"] += info["hosts"][host.name]["volumes"]
 			info["one_off_files"] += info["hosts"][host.name]["one_off_files"]
