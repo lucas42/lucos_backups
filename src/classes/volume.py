@@ -5,9 +5,7 @@ A particular docker volume stored on given `Host`
 import yaml
 import json
 from datetime import datetime
-
-with open("config.yaml") as config_yaml:
-	config = yaml.safe_load(config_yaml)
+from utils.config import getVolumesConfig, getHostsConfig
 
 with open("effort_labels.yaml") as effort_labels_yaml:
 	effort_labels = yaml.safe_load(effort_labels_yaml)
@@ -18,11 +16,11 @@ class Volume:
 		data = json.loads(rawjson)
 		self.name = data["Name"]
 		self.path = data["Mountpoint"]
-		if self.name in config["volumes"]:
+		if self.name in getVolumesConfig():
 			known = True
-			description = config["volumes"][self.name]["description"]
-			effort_id = config["volumes"][self.name]["effort"]
-			skip_backup = config["volumes"][self.name].get("skip_backup", False)
+			description = getVolumesConfig()[self.name]["description"]
+			effort_id = getVolumesConfig()[self.name]["recreate_effort"]
+			skip_backup = getVolumesConfig()[self.name].get("skip_backup", False)
 		else:
 			known = False
 			description = "Unknown Volume"
@@ -76,8 +74,8 @@ class Volume:
 	def backupToAll(self):
 		(archive_path, date) = self.archiveLocally()
 		target_path = "/srv/backups/host/{}/volume/".format(self.host.name, self.name, date)
-		for hostname in config["hosts"]:
-			target_domain = config["hosts"][hostname]["domain"]
+		for hostname in getHostsConfig():
+			target_domain = getHostsConfig()[hostname]["domain"]
 			if target_domain != self.host.domain:
 				self.host.copyFileTo(archive_path, target_domain, target_path)
 
@@ -97,7 +95,7 @@ class Volume:
 	@classmethod
 	def getMissing(cls, volumes):
 		missingVolumes = []
-		for volumeName in config["volumes"]:
+		for volumeName in getVolumesConfig():
 			if not Volume.inList(volumeName, volumes):
 				missingVolumes.append(volumeName)
 		return missingVolumes

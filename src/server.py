@@ -6,7 +6,7 @@ from utils.tracking import getAllInfo, fetchAllInfo
 from utils.schedule_tracker import updateScheduleTracker
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from utils.auth import checkAuth, authenticate, setAuthCookies, AuthException
-
+from utils.config import fetchConfig
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")
 try:
@@ -55,6 +55,8 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				self.infoController()
 			elif (self.parsed.path == "/refresh-tracking"):
 				self.refreshTrackingController()
+			elif (self.parsed.path == "/refresh-config"):
+				self.refreshConfigController()
 			else:
 				self.send_error(404, "Page Not Found")
 		except AuthException:
@@ -72,12 +74,12 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			},
 			"checks": {
 				"volume-config": {
-					"techDetail": "Whether any docker volumes found on hosts aren't in config.yaml",
+					"techDetail": "Whether any docker volumes found on hosts aren't in lucos_configy",
 					"ok": (len(data["notInConfig"]) == 0),
-					"debug": "Volumes missing from volumes.yaml: "+", ".join(data["notInConfig"]),
+					"debug": "Volumes missing from lucos_configy: "+", ".join(data["notInConfig"]),
 				},
 				"volume-host": {
-					"techDetail": "Whether any volumes in config.yaml aren't found on at least one host",
+					"techDetail": "Whether any volumes in lucos_configy aren't found on at least one host",
 					"ok": (len(data["notOnHost"]) == 0),
 					"debug": "Volumes not found on host: "+", ".join(data["notOnHost"]),
 				},
@@ -185,6 +187,23 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Content-type", "text/plain")
 			self.end_headers()
 			self.wfile.write(bytes("Error refreshing tracking: "+str(error)+"\n\n", "utf-8"))
+	def refreshConfigController(self):
+		if self.method != "POST":
+			self.send_response(405)
+			self.send_header("Allow", "POST")
+			self.end_headers()
+			return
+		print ("\033[0mFetching config...", flush=True)
+		try:
+			fetchConfig()
+			self.send_response(303)
+			self.send_header("Location", "/")
+			self.end_headers()
+		except Exception as error:
+			self.send_response(500)
+			self.send_header("Content-type", "text/plain")
+			self.end_headers()
+			self.wfile.write(bytes("Error fetching config: "+str(error)+"\n\n", "utf-8"))
 
 
 

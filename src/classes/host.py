@@ -8,15 +8,14 @@ from datetime import datetime
 from classes.volume import Volume
 from classes.backup import Backup
 from classes.oneoff import OneOffFile
+from utils.config import getHostsConfig
 
 ROOT_DIR = '/srv/backups/'
-with open("config.yaml") as config_yaml:
-	config = yaml.safe_load(config_yaml)
 
 class Host:
 	def __init__(self, name):
 		self.name = name
-		self.domain = config["hosts"][name]["domain"]
+		self.domain = getHostsConfig()[name]["domain"]
 		self.connection = fabric.Connection(
 			host=self.domain,
 			user="lucos-backups",
@@ -145,7 +144,7 @@ class Host:
 	@classmethod
 	def getAll(cls):
 		hostlist = []
-		for host in config["hosts"]:
+		for host in getHostsConfig():
 			hostlist.append(cls(host))
 		return hostlist
 

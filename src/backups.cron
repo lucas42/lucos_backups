@@ -1,3 +1,4 @@
 25 3 * * * (cd /usr/src/app && source scripts/init-agent.sh && pipenv run python -m scripts.create-backups) >> /var/log/cron.log 2>&1
 49 4 * * * (cd /usr/src/app && source scripts/init-agent.sh && pipenv run python -m scripts.prune-backups) >> /var/log/cron.log 2>&1
 7 * * * * curl -X POST http://localhost:$PORT/refresh-tracking -s >> /var/log/cron.log 2>&1
+3 * * * * curl -X POST http://localhost:$PORT/refresh-config -s >> /var/log/cron.log 2>&1
