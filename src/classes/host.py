@@ -145,8 +145,6 @@ class Host:
 	def getAll(cls):
 		hostlist = []
 		for host in getHostsConfig():
-			if host in ['virgon-express']: # Not currently online.  TODO: handle offline hosts more gracefully
-				continue
 			hostlist.append(cls(host))
 		return hostlist
 

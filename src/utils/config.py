@@ -7,7 +7,12 @@ def getVolumesConfig():
 	return config["volumes"]
 
 def getHostsConfig():
-	return config["hosts"]
+	inactive_host_list = ['virgon-express'] # Not currently online.  TODO: handle offline hosts more gracefully
+	active_hosts = {}
+	for host in config["hosts"]:
+		if host not in inactive_host_list:
+			active_hosts[host] = config["hosts"][host]
+	return active_hosts
 
 def getAllDomains(ignore_host):
 	domainlist = []
