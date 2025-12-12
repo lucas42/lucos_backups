@@ -1,13 +1,13 @@
 import yaml, requests
 from utils.schedule_tracker import updateScheduleTracker
 
+inactive_host_list = ['virgon-express'] # Not currently online.  TODO: handle offline hosts more gracefully
 config = {}
 
 def getVolumesConfig():
 	return config["volumes"]
 
 def getHostsConfig():
-	inactive_host_list = ['virgon-express'] # Not currently online.  TODO: handle offline hosts more gracefully
 	active_hosts = {}
 	for host in config["hosts"]:
 		if host not in inactive_host_list:
@@ -18,7 +18,7 @@ def getAllDomains(ignore_host):
 	domainlist = []
 	for hostname in config["hosts"]:
 		target_domain = config["hosts"][hostname]["domain"]
-		if target_domain != ignore_host.domain:
+		if hostname not in inactive_host_list and target_domain != ignore_host.domain:
 			domainlist.append(target_domain)
 	return domainlist
 
