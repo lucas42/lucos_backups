@@ -49,7 +49,7 @@ class Repository:
 		archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
 		for host in Host.getAll():
 			print("Archiving repo {name} to {host} at {archivePath}".format(name=self.name, host=host.name, archivePath=archivePath), flush=True)
-			host.connection.run("mkdir -p {directory}".format(directory=directory), hide=True)
+			host.connection.run("mkdir -p {directory}".format(directory=directory), hide=True, timeout=3)
 			host.connection.run("wget \"{url}\" -O \"{archivePath}\"".format(url=downloadUrl, archivePath=archivePath), hide=True)
 			host.closeConnection()
 		return 1

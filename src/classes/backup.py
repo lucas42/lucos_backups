@@ -38,7 +38,7 @@ class Backup:
 			if not self.toKeep(instance):
 				if dryrun:
 					# In dryrun mode, use `ls` to verify the file for deletion actually exists (will error if it doesn't)
-					self.stored_host.connection.run("echo -n \"DRYRUN - would delete \" && ls {}".format(instance['path']), hide=False)
+					self.stored_host.connection.run("echo -n \"DRYRUN - would delete \" && ls {}".format(instance['path']), hide=False, timeout=3)
 				else:
 					self.stored_host.connection.run("rm -v {}".format(instance['path']), hide=False)
 					pruneCount += 1

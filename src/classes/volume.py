@@ -62,7 +62,7 @@ class Volume:
 		archiveDirectory = "/srv/backups/local/volume"
 		date = datetime.today().strftime('%Y-%m-%d')
 		archivePath = "{archive_directory}/{volume_name}.{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
-		self.host.connection.run("mkdir -p {}".format(archiveDirectory))
+		self.host.connection.run("mkdir -p {}".format(archiveDirectory), timeout=3)
 		self.host.connection.run("docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind alpine:latest tar -C /raw-data -czf {archive_path} .".format(
 			volume_name=self.name,
 			archive_directory=archiveDirectory,
