@@ -86,7 +86,12 @@ class BackupsHandler(BaseHTTPRequestHandler):
 					"techDetail": "Whether the data being used to track backups is more than 2 hours old",
 					"ok": (data_age < datetime.timedelta(hours=2)),
 					"debug": "Last updated: "+str(data["update_time"]),
-				}
+				},
+				"host-tracking-failures": {
+					"techDetail": "Whether any hosts' tracking failed on the last run",
+					"ok": (len(data["hostsFailedTracking"]) == 0),
+					"debug": "Hosts which failed tracking: "+", ".join(data["hostsFailedTracking"]),
+				},
 			},
 			"metrics": {
 				"host-count": {
