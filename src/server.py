@@ -90,7 +90,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				"host-tracking-failures": {
 					"techDetail": "Whether any hosts' tracking failed on the last run",
 					"ok": (len(data["hostsFailedTracking"]) == 0),
-					"debug": "Hosts which failed tracking: "+", ".join(data["hostsFailedTracking"]),
+					"debug": "Hosts which failed tracking: "+", ".join([host.domain for host in data["hostsFailedTracking"]]),
 				},
 			},
 			"metrics": {
@@ -141,19 +141,34 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		checkAuth(self)
 		hostname = self.parsed.path.replace("/hosts/", "")
 		info = getAllInfo()
-		if hostname not in info['hosts']:
+		if hostname in info['hosts']:
+			output = templateEnv.get_template("host.html.jinja").render({
+				'host': hostname,
+				'info': info['hosts'][hostname],
+				'update_time': info['update_time'],
+			})
+			self.send_response(200)
+			self.send_header("Content-type", "text/html")
+			setAuthCookies(self)
+			self.end_headers()
+			self.wfile.write(bytes(output, "utf-8"))
+		else:
+			# If there's no data for the the hostname, check whether there's a matching failure log for that host
+			for host in info['hostsFailedTracking']:
+				if hostname == host.name:
+					output = templateEnv.get_template("host-error.html.jinja").render({
+						'host': host.name,
+						'domain': host.domain,
+						'update_time': info['update_time'],
+					})
+					self.send_response(200)
+					self.send_header("Content-type", "text/html")
+					setAuthCookies(self)
+					self.end_headers()
+					self.wfile.write(bytes(output, "utf-8"))
+					return
+			# If there's no data and no error, then return 404
 			self.send_error(404, "Host {} Not Found".format(hostname))
-			return
-		output = templateEnv.get_template("host.html.jinja").render({
-			'host': hostname,
-			'info': info['hosts'][hostname],
-			'update_time': info['update_time'],
-		})
-		self.send_response(200)
-		self.send_header("Content-type", "text/html")
-		setAuthCookies(self)
-		self.end_headers()
-		self.wfile.write(bytes(output, "utf-8"))
 	def staticFileController(self, filename, contentType):
 		template = open("resources/"+filename, 'rb')
 		self.send_response(200)

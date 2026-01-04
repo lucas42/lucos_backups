@@ -1,12 +1,23 @@
 html {
 	background: repeating-linear-gradient(-40deg, #ccc, #eee 20px, #eeeeef 20px, #aaaaaf 25px);
+	min-height: 100vh;
+}
+body {
+	padding-top: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+lucos-navbar {
+	position: relative;
 }
 main {
 	max-width: 1250px;
-	margin: auto;
+	margin: 0 auto;
 }
 nav {
-	float left;
+	margin: 10px;
 }
 nav a {
 	color: #555;
@@ -31,12 +42,16 @@ section.mini-section {
 		display: inline-grid;
 		min-width: 250px;
 	}
-}section h2 {
+}
+section h2 {
 	margin: 0 -15px 15px;
 	background-color: rgba(0, 0, 25, 0.7);
 	color: #ccc;
 	padding: 15px;
 	border-radius: 12px 12px 0 0;
+}
+section.failing h2 {
+	background-color: rgba(75, 0, 0, 0.8);
 }
 section h2 a {
 	color: inherit;
@@ -127,7 +142,7 @@ a[target=_blank]:after {
 .disk-space h3 {
 	display: inline;
 }
-.backup_list .error {
+.backup_list .error, .failing .error {
 	color: #a00;
 	text-align: center;
 }
@@ -168,10 +183,8 @@ a[target=_blank]:after {
 }
 footer {
 	text-align: right;
-	position: absolute;
-	left: 0;
-	right: 0;
 	padding: 0.5em 1em;
+	margin-top: auto;
 	font-weight: bold;
 	color: #222;
 	background-image: linear-gradient(#aaa 0%, #ccc 21%, #999 85%, #aaa 100%);
