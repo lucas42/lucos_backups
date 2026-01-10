@@ -86,7 +86,7 @@ class Host:
 		return backup_files
 
 	def getBackups(self):
-		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\t\" -exec {exec}".format(ROOT_DIR=ROOT_DIR, exec='du -sh {} \\;'), hide=True, timeout=3).stdout.splitlines()
+		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\t\" -exec {exec}".format(ROOT_DIR=ROOT_DIR, exec='du -sh {} \\;'), hide=True, timeout=10).stdout.splitlines()
 		backupList = []
 		backups = {}
 		for fileinfo in filelist:
