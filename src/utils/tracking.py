@@ -51,12 +51,12 @@ def fetchAllInfo():
 		global latestInfo
 		latestInfo = info
 
-		print("\033[92m" + "Tracking completed successfully" + "\033[0m", flush=True)
 		updateScheduleTracker(
 			system="lucos_backups_tracking",
 			success=True,
 			frequency=60*60, # 1 hour in seconds
 		)
+		print("\033[92m" + "Tracking completed successfully" + "\033[0m", flush=True)
 	except Exception as error:
 		print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 		updateScheduleTracker(
