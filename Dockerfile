@@ -17,5 +17,4 @@ RUN pipenv install
 COPY src /usr/src/app
 COPY --from=navbar lucos_navbar.js resources/
 
-EXPOSE $PORT
 CMD [ "./scripts/startup.sh"]

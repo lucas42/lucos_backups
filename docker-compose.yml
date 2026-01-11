@@ -4,9 +4,9 @@ services:
     container_name: lucos_backups
     image: lucas42/lucos_backups
     ports:
-      - "8027:8027"
+      - $PORT:$PORT
     environment:
-      - PORT=8027
+      - PORT
       - SSH_PRIVATE_KEY
       - GITHUB_KEY
       - SCHEDULE_TRACKER_ENDPOINT
