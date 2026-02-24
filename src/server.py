@@ -90,7 +90,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				"host-tracking-failures": {
 					"techDetail": "Whether any hosts' tracking failed on the last run",
 					"ok": (len(data["hostsFailedTracking"]) == 0),
-					"debug": "Hosts which failed tracking: "+", ".join([host.domain for host in data["hostsFailedTracking"]]),
+					"debug": "Hosts which failed tracking: "+", ".join(["{}: {}".format(host.domain, err) for host, err in data["hostsFailedTracking"].items()]),
 				},
 			},
 			"metrics": {

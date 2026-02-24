@@ -15,7 +15,7 @@ def fetchAllInfo():
 			"notOnHost": [],
 			"backups": [],
 			"repositories": [],
-			"hostsFailedTracking": []
+			"hostsFailedTracking": {}
 		}
 		for host in Host.getAll():
 			try:
@@ -24,7 +24,7 @@ def fetchAllInfo():
 				info["one_off_files"] += info["hosts"][host.name]["one_off_files"]
 				info["backups"] += info["hosts"][host.name]["backups"]
 			except Exception as error:
-				info["hostsFailedTracking"].append(host)
+				info["hostsFailedTracking"][host] = str(error)
 		info["repositories"] = [repo.getData() for repo in Repository.getAll()]
 		for volume in info["volumes"]:
 			if not volume["known"]:
