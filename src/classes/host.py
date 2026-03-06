@@ -12,6 +12,15 @@ from utils.config import getHostsConfig
 
 ROOT_DIR = '/srv/backups/'
 
+def format_bytes(size_bytes):
+	'''Convert a byte count to a human-readable string (e.g. 1.2G, 340M)'''
+	size_bytes = int(size_bytes)
+	for unit in ['', 'K', 'M', 'G', 'T']:
+		if abs(size_bytes) < 1024.0:
+			return "{:.1f}{}".format(size_bytes, unit)
+		size_bytes /= 1024.0
+	return "{:.1f}P".format(size_bytes)
+
 class Host:
 	def __init__(self, name):
 		self.name = name
@@ -86,11 +95,12 @@ class Host:
 		return backup_files
 
 	def getBackups(self):
-		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\t\" -exec {exec}".format(ROOT_DIR=ROOT_DIR, exec='du -sh {} \\;'), hide=True, timeout=10).stdout.splitlines()
+		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\\t%s\\t%p\\n\"".format(ROOT_DIR=ROOT_DIR), hide=True, timeout=60).stdout.splitlines()
 		backupList = []
 		backups = {}
 		for fileinfo in filelist:
-			mod_date, size, filepath = fileinfo.split('	', 2)
+			mod_date, size_bytes, filepath = fileinfo.split('	', 2)
+			size = format_bytes(size_bytes)
 			directories = filepath.replace(ROOT_DIR, '').split('/')
 			location = directories.pop(0) # Should either be local or host
 			if location == 'host':
