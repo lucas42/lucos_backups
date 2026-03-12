@@ -15,7 +15,7 @@ services:
       - SCHEDULE_TRACKER_ENDPOINT
       - LOGANNE_ENDPOINT
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:${PORT}/_info"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${PORT}/_info"]
       interval: 10s
       timeout: 5s
       retries: 3
