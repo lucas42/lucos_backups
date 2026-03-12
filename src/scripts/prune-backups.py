@@ -1,7 +1,7 @@
 #! /usr/local/bin/python3
 import traceback
-from utils.loganne import loganneRequest
-from utils.schedule_tracker import updateScheduleTracker
+from loganne import updateLoganne
+from schedule_tracker import updateScheduleTracker
 from classes.host import Host
 
 print ("\033[0mPruning Backups...", flush=True)
@@ -18,11 +18,11 @@ try:
 		host.closeConnection()
 	print("\033[92mPruning Complete - {} backups pruned\033[0m".format(pruneCount), flush=True)
 	if pruneCount > 0:
-		loganneRequest({
-			"type":"prune-backups",
-			"humanReadable": "{} backups pruned".format(pruneCount),
-		})
-	updateScheduleTracker(system="lucos_backups_prune")
+		updateLoganne(
+			type="prune-backups",
+			humanReadable="{} backups pruned".format(pruneCount),
+		)
+	updateScheduleTracker(system="lucos_backups_prune", success=True)
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 	traceback.print_exception(error)

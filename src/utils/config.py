@@ -1,5 +1,5 @@
 import yaml, requests
-from utils.schedule_tracker import updateScheduleTracker
+from schedule_tracker import updateScheduleTracker
 
 inactive_host_list = ['virgon-express'] # Not currently online.  TODO: handle offline hosts more gracefully
 config = {}

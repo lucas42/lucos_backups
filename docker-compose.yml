@@ -10,6 +10,7 @@ services:
       - SSH_PRIVATE_KEY
       - GITHUB_KEY
       - SCHEDULE_TRACKER_ENDPOINT
+      - LOGANNE_ENDPOINT
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:${PORT}/_info"]
       interval: 10s
