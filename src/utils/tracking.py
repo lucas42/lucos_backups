@@ -2,7 +2,7 @@ import datetime
 from classes.host import Host
 from classes.volume import Volume
 from classes.repository import Repository
-from utils.schedule_tracker import updateScheduleTracker
+from schedule_tracker import updateScheduleTracker
 
 def fetchAllInfo():
 	print ("\033[0mTracking Backups...", flush=True)

@@ -1,7 +1,7 @@
 #! /usr/local/bin/python3
 import traceback
-from utils.loganne import loganneRequest
-from utils.schedule_tracker import updateScheduleTracker
+from loganne import updateLoganne
+from schedule_tracker import updateScheduleTracker
 from classes.host import Host
 from classes.repository import Repository
 
@@ -21,10 +21,10 @@ try:
 		backupCount += repo.backup()
 	print("\033[92m" + "Backups Complete" + "\033[0m", flush=True)
 	if backupCount > 0:
-		loganneRequest({
-			"type":"backups",
-			"humanReadable": "{} archives successfully backed up".format(backupCount),
-		})
+		updateLoganne(
+			type="backups",
+			humanReadable="{} archives successfully backed up".format(backupCount),
+		)
 	updateScheduleTracker()
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
