@@ -6,6 +6,9 @@ services:
     ports:
       - $PORT:$PORT
     environment:
+      - SYSTEM
+      - ENVIRONMENT
+      - APP_ORIGIN
       - PORT
       - SSH_PRIVATE_KEY
       - GITHUB_KEY
