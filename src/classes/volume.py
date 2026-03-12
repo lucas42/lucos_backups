@@ -21,11 +21,13 @@ class Volume:
 			description = getVolumesConfig()[self.name]["description"]
 			effort_id = getVolumesConfig()[self.name]["recreate_effort"]
 			skip_backup = getVolumesConfig()[self.name].get("skip_backup", False)
+			skip_backup_on_hosts = getVolumesConfig()[self.name].get("skip_backup_on_hosts", [])
 		else:
 			known = False
 			description = "Unknown Volume"
 			effort_id = "unknown"
 			skip_backup = False
+			skip_backup_on_hosts = []
 		labels =  {}
 		for label in data["Labels"].split(","):
 			key, value = label.split("=", 1)
@@ -45,6 +47,7 @@ class Volume:
 			'known': known,
 			'effort': self.effort,
 			'skip_backup': skip_backup,
+			'skip_backup_on_hosts': skip_backup_on_hosts,
 			'project': {
 				'name': project,
 				'link': "https://github.com/lucas42/"+project,
@@ -80,7 +83,11 @@ class Volume:
 				self.host.copyFileTo(archive_path, target_domain, target_path)
 
 	def shouldBackup(self):
-		return not self.data["skip_backup"]
+		if self.data["skip_backup"]:
+			return False
+		if self.host.name in self.data["skip_backup_on_hosts"]:
+			return False
+		return True
 
 	def backup(self):
 		if self.shouldBackup():
