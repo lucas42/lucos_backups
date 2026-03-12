@@ -25,7 +25,7 @@ try:
 			type="backups",
 			humanReadable="{} archives successfully backed up".format(backupCount),
 		)
-	updateScheduleTracker()
+	updateScheduleTracker(success=True)
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 	traceback.print_exception(error)

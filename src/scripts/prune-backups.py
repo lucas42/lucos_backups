@@ -22,7 +22,7 @@ try:
 			type="prune-backups",
 			humanReadable="{} backups pruned".format(pruneCount),
 		)
-	updateScheduleTracker(system="lucos_backups_prune")
+	updateScheduleTracker(system="lucos_backups_prune", success=True)
 except Exception as error:
 	print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 	traceback.print_exception(error)
