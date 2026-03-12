@@ -76,7 +76,7 @@ class Volume:
 	# Backs up the volume to all available hosts (except the one the volume is on)
 	def backupToAll(self):
 		(archive_path, date) = self.archiveLocally()
-		target_path = "/srv/backups/host/{}/volume/".format(self.host.name, self.name, date)
+		target_path = "/srv/backups/host/{}/volume/".format(self.host.name)
 		for hostname in getHostsConfig():
 			target_domain = getHostsConfig()[hostname]["domain"]
 			if target_domain != self.host.domain:
