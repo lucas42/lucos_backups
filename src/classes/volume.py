@@ -28,14 +28,13 @@ class Volume:
 			effort_id = "unknown"
 			skip_backup = False
 			skip_backup_on_hosts = []
-		labels =  {}
-		for label in data["Labels"].split(","):
-			key, value = label.split("=", 1)
-			labels[key] = value
-		try:
-			project = labels['com.docker.compose.project']
-		except:
-			raise Exception("Project label missing from volume "+self.name)
+		labels = {}
+		if data["Labels"]:
+			for label in data["Labels"].split(","):
+				key, value = label.split("=", 1)
+				labels[key] = value
+		if 'com.docker.compose.project' not in labels:
+			raise Exception("No Docker Compose project label on volume "+self.name)
 
 		self.effort = {
 			'id': effort_id,
