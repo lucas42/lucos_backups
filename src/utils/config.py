@@ -46,7 +46,8 @@ def fetchConfig():
 		for host in yaml.safe_load(host_yaml):
 			config["hosts"][host['id']] = host
 
-		yaml.dump(config, config_file, default_flow_style=False)
+		with open('config.yaml', 'w') as config_file:
+			yaml.dump(config, config_file, default_flow_style=False)
 		updateScheduleTracker(
 			system="lucos_backups_config",
 			success=True,
@@ -64,12 +65,11 @@ def fetchConfig():
 		raise error
 
 try:
-	config_file = open('config.yaml', 'r+')
-	read_config = yaml.safe_load(config_file)
+	with open('config.yaml', 'r') as config_file:
+		read_config = yaml.safe_load(config_file)
 	if read_config:
 		config = read_config
 	else:
 		fetchConfig()
 except FileNotFoundError:
-	config_file = open('config.yaml', 'w+')
 	fetchConfig()
