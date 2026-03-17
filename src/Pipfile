@@ -12,3 +12,4 @@ lucos-loganne-pythonclient = "==1.0.4"
 lucos-schedule-tracker-pythonclient = "==1.0.1"
 
 [dev-packages]
+pytest = "*"
