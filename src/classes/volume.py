@@ -35,6 +35,7 @@ class Volume:
 				labels[key] = value
 		if 'com.docker.compose.project' not in labels:
 			raise Exception("No Docker Compose project label on volume "+self.name)
+		project = labels['com.docker.compose.project']
 
 		self.effort = {
 			'id': effort_id,
