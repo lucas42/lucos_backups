@@ -78,14 +78,14 @@ class Volume:
 		(archive_path, date) = self.archiveLocally()
 		target_path = "/srv/backups/host/{}/volume/".format(self.host.name)
 		for hostname in getHostsConfig():
+			if hostname in self.data["skip_backup_on_hosts"]:
+				continue
 			target_domain = getHostsConfig()[hostname]["domain"]
 			if target_domain != self.host.domain:
 				self.host.copyFileTo(archive_path, target_domain, target_path)
 
 	def shouldBackup(self):
 		if self.data["skip_backup"]:
-			return False
-		if self.host.name in self.data["skip_backup_on_hosts"]:
 			return False
 		return True
 
