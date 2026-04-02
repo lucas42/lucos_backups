@@ -1,4 +1,4 @@
-FROM lucas42/lucos_navbar:2.1.30 AS navbar
+FROM lucas42/lucos_navbar:2.1.33 AS navbar
 FROM python:3.14.3-alpine
 
 WORKDIR /usr/src/app
