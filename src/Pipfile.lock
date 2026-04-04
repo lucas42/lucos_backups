@@ -313,6 +313,7 @@
                 "sha256:fbccdc05410c9ee21bbf16a35f4c1d16123dcdeb8a1d38f33654fa21d0234f79",
                 "sha256:fea24543955a6a729c45a73fe90e08c743f0b3334bbf3201e6c4bc1b0c7fa464"
             ],
+            "index": "pypi",
             "markers": "python_version >= '3.7'",
             "version": "==3.4.7"
         },
