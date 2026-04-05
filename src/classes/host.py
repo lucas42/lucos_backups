@@ -35,7 +35,7 @@ class Host:
 		self.connection.close()
 
 	def getVolumes(self):
-		raw_volumes = self.connection.run('docker volume ls --format json', hide=True, timeout=3).stdout.splitlines()
+		raw_volumes = self.connection.run('docker volume ls --format json', hide=True, timeout=10).stdout.splitlines()
 		volumes = []
 		for raw_volume in raw_volumes:
 			volumes.append(Volume(self, raw_volume))
