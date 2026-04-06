@@ -389,11 +389,11 @@
         },
         "fabric": {
             "hashes": [
-                "sha256:8783ca42e3b0076f08b26901aac6b9d9b1f19c410074e7accfab902c184ff4a3",
-                "sha256:91c47c0be68b14936c88b34da8a1f55e5710fd28397dac5d4ff2e21558113a6f"
+                "sha256:ce61917f4f398018337ce279b357650a3a74baecf3fdd53a5839013944af965e",
+                "sha256:dcbd2c47ad87688facaef5cc11aab6d1ec9ed05645fed97a5de7204d5d17cc44"
             ],
             "index": "pypi",
-            "version": "==3.2.2"
+            "version": "==3.2.3"
         },
         "idna": {
             "hashes": [
