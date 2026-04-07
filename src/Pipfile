@@ -9,7 +9,7 @@ fabric = "*"
 pyyaml = "*"
 jinja2 = ">=3.1.6"
 lucos-loganne-pythonclient = "==1.0.21"
-lucos-schedule-tracker-pythonclient = "==1.0.16"
+lucos-schedule-tracker-pythonclient = "==1.0.18"
 
 [dev-packages]
 pytest = "*"
