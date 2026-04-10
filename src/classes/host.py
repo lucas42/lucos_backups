@@ -43,10 +43,10 @@ class Host:
 
 	def getOneOffFiles(self):
 		directory = "{ROOT_DIR}local/one-off/".format(ROOT_DIR=ROOT_DIR)
-		self.connection.run("mkdir -p {directory}".format(directory=directory), timeout=3)
-		self.connection.run("chmod g+w {directory}".format(directory=directory), timeout=3) # Allow any user in the group to add files to the one-off directory
+		self.connection.run("mkdir -p {directory}".format(directory=directory), timeout=10)
+		self.connection.run("chmod g+w {directory}".format(directory=directory), timeout=10) # Allow any user in the group to add files to the one-off directory
 		filelist = []
-		raw_files = self.connection.run("ls -l --human-readable --time-style=long-iso --literal {directory}".format(directory=directory), hide=True, timeout=3).stdout.splitlines()
+		raw_files = self.connection.run("ls -l --human-readable --time-style=long-iso --literal {directory}".format(directory=directory), hide=True, timeout=10).stdout.splitlines()
 		del raw_files[0] # Drop the header line from ls
 		for file_info in raw_files:
 			cols = file_info.split(maxsplit=7)
@@ -61,20 +61,20 @@ class Host:
 	def copyFileTo(self, source_path, target_host, target_path):
 		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host), flush=True)
 		# Ensure the target directory exists
-		self.connection.run('ssh -o StrictHostKeyChecking=no {} mkdir -p {}'.format(target_host, os.path.dirname(target_path)), hide=True, timeout=3)
+		self.connection.run('ssh -o StrictHostKeyChecking=no {} mkdir -p {}'.format(target_host, os.path.dirname(target_path)), hide=True, timeout=10)
 		self.connection.run('scp "{}" {}:"{}"'.format(source_path, target_host, target_path), hide=True)
 
 	def fileExistsRemotely(self, target_host, target_directory, target_filename):
 		try:
-			self.connection.run('ssh -o StrictHostKeyChecking=no {} \'ls -p "{}"\''.format(target_host, target_directory+target_filename), hide=True, timeout=3)
+			self.connection.run('ssh -o StrictHostKeyChecking=no {} \'ls -p "{}"\''.format(target_host, target_directory+target_filename), hide=True, timeout=10)
 			return True
 		except invoke.exceptions.UnexpectedExit as e:
 			return False
 
 	def checkDiskSpace(self):
-		raw_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True, timeout=3).stdout.strip())
-		readable_space_result = self.connection.run("df -Ph /srv/backups | tail -1 | awk '{print $4}'", hide=True, timeout=3).stdout.strip()
-		percentage_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $5}' | sed 's/%//'", hide=True, timeout=3).stdout.strip())
+		raw_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True, timeout=10).stdout.strip())
+		readable_space_result = self.connection.run("df -Ph /srv/backups | tail -1 | awk '{print $4}'", hide=True, timeout=10).stdout.strip()
+		percentage_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $5}' | sed 's/%//'", hide=True, timeout=10).stdout.strip())
 		return {
 			'free_bytes': raw_space_result,
 			'free_readable': readable_space_result,
@@ -82,7 +82,7 @@ class Host:
 		}
 
 	def checkBackupFiles(self):
-		result = self.connection.run('ls -l --time-style=long-iso --literal /srv/backups', hide=True, timeout=3)
+		result = self.connection.run('ls -l --time-style=long-iso --literal /srv/backups', hide=True, timeout=10)
 		raw_files = result.stdout.splitlines()
 		del raw_files[0] # Drop the header line from ls
 		backup_files = []

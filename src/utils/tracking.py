@@ -1,10 +1,19 @@
 import datetime
+import threading
 from classes.host import Host
 from classes.volume import Volume
 from classes.repository import Repository
 from schedule_tracker import updateScheduleTracker
 
+RETRY_DELAY_SECONDS = 5 * 60  # Retry after 5 minutes if any host fails tracking
+_retry_timer = None
+
 def fetchAllInfo():
+	global _retry_timer
+	# Cancel any pending retry — we're doing a fresh run now
+	if _retry_timer is not None:
+		_retry_timer.cancel()
+		_retry_timer = None
 	print ("\033[0mTracking Backups...", flush=True)
 	try:
 		info = {
@@ -57,6 +66,16 @@ def fetchAllInfo():
 			frequency=60*60, # 1 hour in seconds
 		)
 		print("\033[92m" + "Tracking completed successfully" + "\033[0m", flush=True)
+		# If any hosts failed, schedule an automatic retry so the service self-heals
+		# without waiting for the next hourly cron run
+		if info["hostsFailedTracking"]:
+			_retry_timer = threading.Timer(RETRY_DELAY_SECONDS, fetchAllInfo)
+			_retry_timer.daemon = True
+			_retry_timer.start()
+			print("\033[93mRetrying tracking in {} minutes due to {} host(s) failing\033[0m".format(
+				RETRY_DELAY_SECONDS // 60,
+				len(info["hostsFailedTracking"]),
+			), flush=True)
 	except Exception as error:
 		print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 		updateScheduleTracker(
