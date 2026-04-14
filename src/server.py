@@ -76,11 +76,13 @@ class BackupsHandler(BaseHTTPRequestHandler):
 					"techDetail": "Whether any docker volumes found on hosts aren't in lucos_configy",
 					"ok": (len(data["notInConfig"]) == 0),
 					"debug": "Volumes missing from lucos_configy: "+", ".join(data["notInConfig"]),
+					"dependsOn": "lucos_configy",
 				},
 				"volume-host": {
 					"techDetail": "Whether any volumes in lucos_configy aren't found on at least one host",
 					"ok": (len(data["notOnHost"]) == 0),
 					"debug": "Volumes not found on host: "+", ".join(data["notOnHost"]),
+					"dependsOn": "lucos_configy",
 				},
 				"data-age": {
 					"techDetail": "Whether the data being used to track backups is more than 2 hours old",
