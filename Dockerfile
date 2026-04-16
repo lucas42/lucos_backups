@@ -1,5 +1,7 @@
 FROM lucas42/lucos_navbar:2.1.50 AS navbar
 FROM python:3.14.3-alpine
+ARG VERSION
+ENV VERSION=$VERSION
 
 WORKDIR /usr/src/app
 
