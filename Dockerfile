@@ -1,5 +1,5 @@
 FROM lucas42/lucos_navbar:2.1.51 AS navbar
-FROM python:3.14.3-alpine
+FROM python:3.15.0a2-alpine
 ARG VERSION
 ENV VERSION=$VERSION
 
