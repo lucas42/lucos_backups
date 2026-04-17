@@ -2,7 +2,7 @@ services:
   lucos_backups:
     build: .
     container_name: lucos_backups
-    image: lucas42/lucos_backups
+    image: lucas42/lucos_backups:${VERSION:-latest}
     ports:
       - $PORT:$PORT
     environment:
