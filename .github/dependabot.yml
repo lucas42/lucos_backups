@@ -24,6 +24,14 @@ updates:
     open-pull-requests-limit: 10
     allow:
       - dependency-type: all
+    ignore:
+      # Ignore Python pre-release image tags (alpha/beta/rc) — pipenv can't
+      # find compatible wheels for pre-release Python builds.
+      - dependency-name: "python"
+        versions:
+          - "*.0a*"
+          - "*.0b*"
+          - "*.0rc*"
     groups:
       minor-and-patch:
         update-types:
