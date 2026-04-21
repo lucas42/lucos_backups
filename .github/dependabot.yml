@@ -27,11 +27,12 @@ updates:
     ignore:
       # Ignore Python pre-release image tags (alpha/beta/rc) — pipenv can't
       # find compatible wheels for pre-release Python builds.
+      # Use the range format Dependabot applies internally to Docker alpine tags
+      # (e.g. 3.15.0a2-alpine is treated as 3.15.0a2.pre.alpine.a internally).
+      # Add a new entry here when a new Python minor pre-release series starts.
       - dependency-name: "python"
         versions:
-          - "*.0a*"
-          - "*.0b*"
-          - "*.0rc*"
+          - ">= 3.15.0a1.pre.alpine.a, < 3.15.1"
     groups:
       minor-and-patch:
         update-types:
