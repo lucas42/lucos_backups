@@ -24,24 +24,11 @@ def format_bytes(size_bytes):
 class Host:
 	def __init__(self, name):
 		self.name = name
-		host_config = getHostsConfig()[name]
-		self.domain = host_config["domain"]
-
-		gateway_name = host_config.get("ssh_gateway")
-		gateway_connection = None
-		if gateway_name:
-			gateway_domain = getHostsConfig()[gateway_name]["domain"]
-			gateway_connection = fabric.Connection(
-				host=gateway_domain,
-				user="lucos-backups",
-				forward_agent=True,
-			)
-
+		self.domain = getHostsConfig()[name]["domain"]
 		self.connection = fabric.Connection(
 			host=self.domain,
 			user="lucos-backups",
 			forward_agent=True,
-			gateway=gateway_connection,
 		)
 
 	def closeConnection(self):
