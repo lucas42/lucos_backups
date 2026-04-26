@@ -134,7 +134,7 @@ class TestBackupToAll:
         vol.archiveLocally = MagicMock(return_value=("/srv/backups/local/volume/test.tar.gz", "2026-03-20"))
         return vol
 
-    def test_backup_skips_destination_in_skip_backup_on_hosts(self):
+    def test_backup_skips_destination_in_skip_backup_on_hosts(self, capsys):
         """Destinations listed in skip_backup_on_hosts must not receive the backup."""
         vol = self._make_volume("lucos_photos_photos")
         # avalon is source; xwing and salvare are remote — but salvare is in skip_backup_on_hosts
@@ -143,6 +143,16 @@ class TestBackupToAll:
         calls = vol.host.copyFileTo.call_args_list
         destination_domains = [c[0][1] for c in calls]
         assert "salvare.l42.eu" not in destination_domains
+
+    def test_backup_logs_skip_decision(self, capsys):
+        """A skip decision should produce a visible log line naming the host and volume."""
+        vol = self._make_volume("lucos_photos_photos")
+        vol.backupToAll()
+
+        captured = capsys.readouterr()
+        assert "salvare" in captured.out
+        assert "skip_backup_on_hosts" in captured.out
+        assert "lucos_photos_photos" in captured.out
 
     def test_backup_sends_to_non_skipped_destinations(self):
         """Destinations not in skip_backup_on_hosts should still receive the backup."""

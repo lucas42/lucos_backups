@@ -79,6 +79,7 @@ class Volume:
 		target_path = "/srv/backups/host/{}/volume/".format(self.host.name)
 		for hostname in getHostsConfig():
 			if hostname in self.data["skip_backup_on_hosts"]:
+				print("Skipping {} (in skip_backup_on_hosts list) for {}".format(hostname, self.name), flush=True)
 				continue
 			target_domain = getHostsConfig()[hostname]["domain"]
 			if target_domain != self.host.domain:
