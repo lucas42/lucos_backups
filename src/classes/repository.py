@@ -27,7 +27,7 @@ class Repository:
 		self.source_url = rawinfo['url']+"/tarball"
 
 	def __str__(self):
-		return "<One-Off File {} on {}>".format(self.name, self.host.name)
+		return "<Repository {}>".format(self.name)
 
 	'''
 	Returns the URL to download the repository from as a tarball
