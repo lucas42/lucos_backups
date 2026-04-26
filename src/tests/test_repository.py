@@ -24,10 +24,15 @@ class TestRepositoryStr:
         # Ensure GITHUB_KEY is set before importing repository (module-level guard)
         os.environ.setdefault("GITHUB_KEY", "test_key_for_unit_tests")
 
-        # Stub classes.host (requires fabric which isn't installed in test env)
+        # Stub classes.host (requires fabric, not in CI test deps)
         fake_host_module = type(sys)("classes.host")
         fake_host_module.Host = type("Host", (), {})
         sys.modules["classes.host"] = fake_host_module
+
+        # Stub requests (not installed in CI test env — only pyyaml and pytest are)
+        fake_requests = type(sys)("requests")
+        fake_requests.get = lambda *a, **kw: None
+        sys.modules["requests"] = fake_requests
 
         import importlib
         import classes.repository
@@ -37,6 +42,7 @@ class TestRepositoryStr:
 
     def teardown_method(self):
         sys.modules.pop("classes.host", None)
+        sys.modules.pop("requests", None)
         sys.modules.pop("classes.repository", None)
 
     def test_str_returns_correct_format(self):
