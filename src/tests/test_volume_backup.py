@@ -182,3 +182,66 @@ class TestBackupToAll:
         assert "xwing.l42.eu" in destination_domains
         assert "salvare.l42.eu" in destination_domains
         assert len(calls) == 2
+
+    def test_failure_on_one_host_does_not_abort_remaining_hosts(self):
+        """If copyFileTo raises for one host, the remaining hosts are still attempted."""
+        vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
+
+        def fail_on_xwing(source, target_domain, target_path):
+            if "xwing" in target_domain:
+                raise Exception("disk full")
+
+        vol.host.copyFileTo.side_effect = fail_on_xwing
+
+        with pytest.raises(Exception):
+            vol.backupToAll()
+
+        # Both hosts must have been attempted despite xwing failing.
+        calls = vol.host.copyFileTo.call_args_list
+        destination_domains = [c[0][1] for c in calls]
+        assert "xwing.l42.eu" in destination_domains
+        assert "salvare.l42.eu" in destination_domains
+
+    def test_failure_on_one_host_raises_summary_exception(self):
+        """A failure on any host causes a summary exception after all hosts are tried."""
+        vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
+
+        vol.host.copyFileTo.side_effect = Exception("scp failed")
+
+        with pytest.raises(Exception) as exc_info:
+            vol.backupToAll()
+
+        assert "backupToAll failed" in str(exc_info.value)
+        assert "2" in str(exc_info.value)  # both hosts failed
+
+    def test_successful_hosts_still_receive_backup_when_one_fails(self, capsys):
+        """Successful hosts are copied to even when another host's copyFileTo raises."""
+        vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
+
+        hosts_attempted = []
+
+        def selective_failure(source, target_domain, target_path):
+            hosts_attempted.append(target_domain)
+            if "salvare" in target_domain:
+                raise Exception("disk full")
+
+        vol.host.copyFileTo.side_effect = selective_failure
+
+        with pytest.raises(Exception):
+            vol.backupToAll()
+
+        # xwing succeeds (no exception raised for it), salvare fails — but both attempted.
+        assert "xwing.l42.eu" in hosts_attempted
+        assert "salvare.l42.eu" in hosts_attempted
+
+    def test_failure_logs_error_message(self, capsys):
+        """A copyFileTo failure should produce a visible log line with the volume and hostname."""
+        vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
+        vol.host.copyFileTo.side_effect = Exception("disk full")
+
+        with pytest.raises(Exception):
+            vol.backupToAll()
+
+        captured = capsys.readouterr()
+        assert "Failed to copy" in captured.out
+        assert "lucos_notes_data" in captured.out

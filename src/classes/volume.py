@@ -77,13 +77,21 @@ class Volume:
 	def backupToAll(self):
 		(archive_path, date) = self.archiveLocally()
 		target_path = "/srv/backups/host/{}/volume/".format(self.host.name)
+		failures = []
 		for hostname in getHostsConfig():
 			if hostname in self.data["skip_backup_on_hosts"]:
 				print("Skipping {} (in skip_backup_on_hosts list) for {}".format(hostname, self.name), flush=True)
 				continue
 			target_domain = getHostsConfig()[hostname]["domain"]
 			if target_domain != self.host.domain:
-				self.host.copyFileTo(archive_path, target_domain, target_path)
+				try:
+					self.host.copyFileTo(archive_path, target_domain, target_path)
+				except Exception as e:
+					print("Failed to copy {} to {}: {}".format(self.name, hostname, e), flush=True)
+					failures.append((hostname, e))
+		if failures:
+			failed_hosts = ", ".join(h for h, _ in failures)
+			raise Exception("backupToAll failed for {} host(s): {}".format(len(failures), failed_hosts))
 
 	def shouldBackup(self):
 		if self.data["skip_backup"]:
