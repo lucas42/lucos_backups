@@ -27,8 +27,14 @@ Three connectivity paths were considered for getting backups from avalon to auro
 | Path | Security profile | Code complexity | Verdict |
 |---|---|---|---|
 | **Public IPv6 + strict allowlist firewall** | Medium — workable with router+host firewall, ongoing operational burden, QNAP track record (DeadBolt 2022) raises the cost of any misconfiguration | Low — aurora is just another `Host` | Rejected |
-| **WireGuard tunnel** (firmware-native or terminating on xwing) | High — zero exposed ports | Low — aurora is just another `Host` | Firmware-native: rejected (QTS 4.3.3 < 5.1). WireGuard-on-xwing: lower-priority alternative not pursued |
+| **WireGuard tunnel** (firmware-native or terminating on xwing) | High — zero exposed ports | Low — aurora is just another `Host` | Firmware-native: rejected (QTS 4.3.3 < 5.1). WireGuard-on-xwing: rejected — see below |
 | **ProxyJump via xwing** | High — no new internet exposure | Medium — requires centralisation refactor of outbound SSH paths in `Host` | Selected |
+
+**WireGuard-on-xwing** (a Linux-side WireGuard endpoint routing the home LAN subnet over a tunnel from avalon) was considered as a workaround for the missing firmware-native support, and rejected for three reasons:
+
+1. **xwing already runs SSH that lucos_backups uses.** ProxyJump reuses that proven infrastructure rather than adding a separate tunnel stack to operate, monitor, and key-rotate. WireGuard would be a new component with its own failure modes (handshake state, MTU edge cases, key lifecycle) for no functional gain over what's already there.
+2. **The security profile is identical to ProxyJump.** xwing is the SPOF for aurora's connectivity under either approach — neither option exposes aurora to the public internet. WireGuard's "zero exposed ports" advantage is real for firmware-native deployment on aurora itself but moot when the tunnel terminates on xwing.
+3. **ProxyJump forces the outbound-SSH centralisation refactor that #185 identified as overdue.** A WireGuard-on-xwing approach would let aurora behave as a regular host with no special `Host` config, which would let us defer the refactor — leaving the existing fragility in `Host` (raw `ssh`/`scp` subprocess calls bypassing Fabric's `gateway=`) in place for the next analogous change. Choosing the path that forces the refactor now is structural-debt repayment, not added cost.
 
 A **relay model** (xwing rsyncs its stored backups onward to aurora) was also considered but ruled out: photos is being excluded from xwing as part of #216's resolution, so xwing won't have it to relay. The path from avalon to aurora must therefore be direct.
 
