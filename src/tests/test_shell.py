@@ -283,6 +283,77 @@ class TestBusyBoxShellFindBackupFiles:
 # Host is_storage_only short-circuit
 # ---------------------------------------------------------------------------
 
+class TestHostOutboundSSH:
+	"""Tests for _outbound_ssh_args and runOnRemote — specifically the ProxyJump logic.
+	Regression guard for #160 (gateway flag bypassed by raw ssh subprocess paths)."""
+
+	FAKE_HOSTS_CONFIG = {
+		"avalon": {"domain": "avalon.s.l42.eu"},
+		"aurora": {
+			"domain": "aurora.local",
+			"ssh_gateway": "xwing",
+			"is_storage_only": True,
+			"shell_flavour": "busybox",
+			"backup_root": "/backups/",
+		},
+		"xwing": {"domain": "xwing.s.l42.eu"},
+	}
+
+	def setup_method(self):
+		sys.modules.setdefault("utils", MagicMock())
+		sys.modules["utils.config"] = MagicMock()
+
+		# Stub fabric so Connection() returns a fresh MagicMock each time
+		fake_fabric = MagicMock()
+		fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+		sys.modules["fabric"] = fake_fabric
+
+		sys.modules.setdefault("invoke", MagicMock())
+
+		import importlib
+		import classes.host
+		importlib.reload(classes.host)
+
+		self.host_patcher = patch("classes.host.getHostsConfig", return_value=self.FAKE_HOSTS_CONFIG)
+		self.host_patcher.start()
+
+		from classes.host import Host
+		self.avalon = Host("avalon")    # no gateway
+		self.aurora = Host("aurora")    # ssh_gateway: xwing → ssh_gateway_domain: xwing.s.l42.eu
+
+	def teardown_method(self):
+		self.host_patcher.stop()
+		sys.modules.pop("utils.config", None)
+		sys.modules.pop("utils", None)
+		sys.modules.pop("fabric", None)
+		sys.modules.pop("invoke", None)
+		sys.modules.pop("classes.host", None)
+
+	def test_outbound_ssh_args_no_gateway(self):
+		"""_outbound_ssh_args returns only StrictHostKeyChecking=no when target has no gateway."""
+		args = self.avalon._outbound_ssh_args(self.avalon)
+		assert '-o' in args
+		assert 'StrictHostKeyChecking=no' in args
+		assert not any('ProxyJump' in a for a in args)
+
+	def test_outbound_ssh_args_with_gateway(self):
+		"""_outbound_ssh_args includes ProxyJump=<gateway_domain> when target has ssh_gateway."""
+		args = self.avalon._outbound_ssh_args(self.aurora)
+		proxyjump = next((a for a in args if 'ProxyJump' in a), None)
+		assert proxyjump is not None, "ProxyJump flag must be present when target has ssh_gateway"
+		assert 'xwing.s.l42.eu' in proxyjump
+
+	def test_run_on_remote_with_gateway_uses_proxyjump(self):
+		"""runOnRemote passes ProxyJump to the ssh command when the target has an ssh_gateway.
+		This is the regression guard for #160 — previously the gateway was added to the Fabric
+		Connection but the raw ssh subprocess call in runOnRemote bypassed it entirely."""
+		self.avalon.runOnRemote(self.aurora, 'ls /backups')
+		cmd = self.avalon.connection.run.call_args[0][0]
+		assert 'ProxyJump' in cmd, "ssh command must contain ProxyJump flag"
+		assert 'xwing.s.l42.eu' in cmd, "ProxyJump must point to the gateway domain"
+		assert 'aurora.local' in cmd, "ssh command must target aurora's domain"
+
+
 class TestHostStorageOnly:
     """Verify that a storage-only host skips volume and one-off file iteration."""
 
