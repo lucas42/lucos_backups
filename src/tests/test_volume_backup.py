@@ -2,7 +2,7 @@
 Unit tests for Volume.shouldBackup() and Volume.backupToAll()
 
 Tests run from src/ so that effort_labels.yaml is accessible at module load.
-getVolumesConfig and getHostsConfig are patched to avoid network calls.
+getVolumesConfig, getHostsConfig, and Host are patched to avoid network calls.
 """
 import json
 import sys
@@ -28,9 +28,9 @@ FAKE_VOLUMES_CONFIG = {
 }
 
 FAKE_HOSTS_CONFIG = {
-    "avalon":  {"domain": "avalon.l42.eu"},
-    "xwing":   {"domain": "xwing.l42.eu"},
-    "salvare": {"domain": "salvare.l42.eu"},
+    "avalon":  {"domain": "avalon.l42.eu",   "backup_root": "/srv/backups/"},
+    "xwing":   {"domain": "xwing.l42.eu",    "backup_root": "/srv/backups/"},
+    "salvare": {"domain": "salvare.l42.eu",  "backup_root": "/srv/backups/"},
 }
 
 LABELS = "com.docker.compose.project=lucos_photos"
@@ -48,7 +48,17 @@ def make_host(name="avalon", domain="avalon.l42.eu"):
     host = MagicMock()
     host.name = name
     host.domain = domain
+    host.backup_root = "/srv/backups/"
     return host
+
+
+def make_target_host(name, domain):
+    """Build a mock Host object as returned by Host(hostname) inside backupToAll."""
+    h = MagicMock()
+    h.name = name
+    h.domain = domain
+    h.backup_root = "/srv/backups/"
+    return h
 
 
 class TestShouldBackup:
@@ -93,8 +103,6 @@ class TestShouldBackup:
         """skip_backup_on_hosts does not affect shouldBackup — it only filters destinations."""
         raw = make_raw_json("lucos_photos_photos")
         vol = self.Volume(make_host("avalon"), raw)
-        # The volume lives on avalon; salvare is in skip_backup_on_hosts.
-        # shouldBackup should still return True — filtering happens in backupToAll.
         assert vol.shouldBackup() is True
 
 
@@ -119,10 +127,24 @@ class TestBackupToAll:
         from classes.volume import Volume
         self.Volume = Volume
 
+        # Inject a fake classes.host module so the lazy `from classes.host import Host`
+        # inside backupToAll doesn't attempt to import fabric (not installed in CI tests).
+        self._host_targets = {
+            "avalon":  make_target_host("avalon",  "avalon.l42.eu"),
+            "xwing":   make_target_host("xwing",   "xwing.l42.eu"),
+            "salvare": make_target_host("salvare",  "salvare.l42.eu"),
+        }
+        def host_factory(name):
+            return self._host_targets[name]
+        fake_host_module = type(sys)("classes.host")
+        fake_host_module.Host = host_factory
+        sys.modules["classes.host"] = fake_host_module
+
     def teardown_method(self):
         self.vol_patcher.stop()
         self.hosts_patcher.stop()
         sys.modules.pop("utils.config", None)
+        sys.modules.pop("classes.host", None)
 
     def _make_volume(self, volume_name, host_name="avalon", host_domain="avalon.l42.eu", labels=None):
         if labels is None:
@@ -137,11 +159,10 @@ class TestBackupToAll:
     def test_backup_skips_destination_in_skip_backup_on_hosts(self, capsys):
         """Destinations listed in skip_backup_on_hosts must not receive the backup."""
         vol = self._make_volume("lucos_photos_photos")
-        # avalon is source; xwing and salvare are remote — but salvare is in skip_backup_on_hosts
         vol.backupToAll()
 
         calls = vol.host.copyFileTo.call_args_list
-        destination_domains = [c[0][1] for c in calls]
+        destination_domains = [c[0][1].domain for c in calls]
         assert "salvare.l42.eu" not in destination_domains
 
     def test_backup_logs_skip_decision(self, capsys):
@@ -160,7 +181,7 @@ class TestBackupToAll:
         vol.backupToAll()
 
         calls = vol.host.copyFileTo.call_args_list
-        destination_domains = [c[0][1] for c in calls]
+        destination_domains = [c[0][1].domain for c in calls]
         assert "xwing.l42.eu" in destination_domains
 
     def test_backup_skips_source_host(self):
@@ -169,7 +190,7 @@ class TestBackupToAll:
         vol.backupToAll()
 
         calls = vol.host.copyFileTo.call_args_list
-        destination_domains = [c[0][1] for c in calls]
+        destination_domains = [c[0][1].domain for c in calls]
         assert "avalon.l42.eu" not in destination_domains
 
     def test_backup_with_no_skip_sends_to_all_remote_hosts(self):
@@ -178,17 +199,29 @@ class TestBackupToAll:
         vol.backupToAll()
 
         calls = vol.host.copyFileTo.call_args_list
-        destination_domains = [c[0][1] for c in calls]
+        destination_domains = [c[0][1].domain for c in calls]
         assert "xwing.l42.eu" in destination_domains
         assert "salvare.l42.eu" in destination_domains
         assert len(calls) == 2
+
+    def test_target_path_uses_target_backup_root(self):
+        """target_path passed to copyFileTo should use the target host's backup_root."""
+        # Give one target host a non-default backup_root
+        self._host_targets["xwing"].backup_root = "/backups/"
+        vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
+        vol.backupToAll()
+
+        calls = vol.host.copyFileTo.call_args_list
+        xwing_call = next(c for c in calls if c[0][1].domain == "xwing.l42.eu")
+        target_path = xwing_call[0][2]
+        assert target_path.startswith("/backups/")
 
     def test_failure_on_one_host_does_not_abort_remaining_hosts(self):
         """If copyFileTo raises for one host, the remaining hosts are still attempted."""
         vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
 
-        def fail_on_xwing(source, target_domain, target_path):
-            if "xwing" in target_domain:
+        def fail_on_xwing(source, target_host, target_path):
+            if "xwing" in target_host.domain:
                 raise Exception("disk full")
 
         vol.host.copyFileTo.side_effect = fail_on_xwing
@@ -196,23 +229,21 @@ class TestBackupToAll:
         with pytest.raises(Exception):
             vol.backupToAll()
 
-        # Both hosts must have been attempted despite xwing failing.
         calls = vol.host.copyFileTo.call_args_list
-        destination_domains = [c[0][1] for c in calls]
+        destination_domains = [c[0][1].domain for c in calls]
         assert "xwing.l42.eu" in destination_domains
         assert "salvare.l42.eu" in destination_domains
 
     def test_failure_on_one_host_raises_summary_exception(self):
         """A failure on any host causes a summary exception after all hosts are tried."""
         vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
-
         vol.host.copyFileTo.side_effect = Exception("scp failed")
 
         with pytest.raises(Exception) as exc_info:
             vol.backupToAll()
 
         assert "backupToAll failed" in str(exc_info.value)
-        assert "2" in str(exc_info.value)  # both hosts failed
+        assert "2" in str(exc_info.value)
 
     def test_successful_hosts_still_receive_backup_when_one_fails(self, capsys):
         """Successful hosts are copied to even when another host's copyFileTo raises."""
@@ -220,9 +251,9 @@ class TestBackupToAll:
 
         hosts_attempted = []
 
-        def selective_failure(source, target_domain, target_path):
-            hosts_attempted.append(target_domain)
-            if "salvare" in target_domain:
+        def selective_failure(source, target_host, target_path):
+            hosts_attempted.append(target_host.domain)
+            if "salvare" in target_host.domain:
                 raise Exception("disk full")
 
         vol.host.copyFileTo.side_effect = selective_failure
@@ -230,7 +261,6 @@ class TestBackupToAll:
         with pytest.raises(Exception):
             vol.backupToAll()
 
-        # xwing succeeds (no exception raised for it), salvare fails — but both attempted.
         assert "xwing.l42.eu" in hosts_attempted
         assert "salvare.l42.eu" in hosts_attempted
 

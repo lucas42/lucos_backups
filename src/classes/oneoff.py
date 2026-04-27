@@ -4,7 +4,7 @@ Individual files stored for archival purposes, which are unlikely to be updated.
 Backups are taken, but not snapshotted across different dates
 '''
 import os
-from utils.config import getAllDomains
+from utils.config import getHostsConfig
 
 class OneOffFile:
 	def __init__(self, host, path, modification_date, size):
@@ -18,12 +18,17 @@ class OneOffFile:
 		return "<One-Off File {} on {}>".format(self.name, self.host.name)
 
 	def backup(self):
+		# Local import to avoid circular dependency (host.py imports oneoff.py)
+		from classes.host import Host
 		backupMade = False
-		target_directory = "/srv/backups/host/{}/one-off/".format(self.host.name)
-		for target_domain in getAllDomains(ignore_host=self.host):
-			if self.host.fileExistsRemotely(target_domain, target_directory, self.name):
+		for hostname in getHostsConfig():
+			target_host = Host(hostname)
+			if target_host.domain == self.host.domain:
 				continue
-			self.host.copyFileTo(self.filepath, target_domain, target_directory)
+			target_directory = target_host.backup_root + "host/{}/one-off/".format(self.host.name)
+			if self.host.fileExistsRemotely(target_host, target_directory, self.name):
+				continue
+			self.host.copyFileTo(self.filepath, target_host, target_directory)
 			backupMade = True
 		if backupMade:
 			return 1

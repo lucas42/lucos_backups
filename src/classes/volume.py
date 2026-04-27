@@ -62,7 +62,7 @@ class Volume:
 	# NB: will replace any existing tarball for a volume of the same name
 	def archiveLocally(self):
 		print("Creating local archive of "+str(self), flush=True)
-		archiveDirectory = "/srv/backups/local/volume"
+		archiveDirectory = self.host.backup_root + "local/volume"
 		date = datetime.today().strftime('%Y-%m-%d')
 		archivePath = "{archive_directory}/{volume_name}.{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
 		self.host.connection.run("mkdir -p {}".format(archiveDirectory), timeout=3)
@@ -75,17 +75,19 @@ class Volume:
 
 	# Backs up the volume to all available hosts (except the one the volume is on)
 	def backupToAll(self):
+		# Local import to avoid circular dependency (host.py imports volume.py)
+		from classes.host import Host
 		(archive_path, date) = self.archiveLocally()
-		target_path = "/srv/backups/host/{}/volume/".format(self.host.name)
 		failures = []
 		for hostname in getHostsConfig():
 			if hostname in self.data["skip_backup_on_hosts"]:
 				print("Skipping {} (in skip_backup_on_hosts list) for {}".format(hostname, self.name), flush=True)
 				continue
-			target_domain = getHostsConfig()[hostname]["domain"]
-			if target_domain != self.host.domain:
+			target_host = Host(hostname)
+			if target_host.domain != self.host.domain:
 				try:
-					self.host.copyFileTo(archive_path, target_domain, target_path)
+					target_path = target_host.backup_root + "host/{}/volume/".format(self.host.name)
+					self.host.copyFileTo(archive_path, target_host, target_path)
 				except Exception as e:
 					print("Failed to copy {} to {}: {}".format(self.name, hostname, e), flush=True)
 					failures.append((hostname, e))
