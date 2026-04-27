@@ -1,6 +1,6 @@
 '''
 Host
-A particular computer (virutal or physical), which has files to be backed up from, can store backups, or both.
+A particular computer (virtual or physical), which has files to be backed up from, can store backups, or both.
 '''
 import yaml, fabric, invoke
 import os
@@ -8,9 +8,8 @@ from datetime import datetime
 from classes.volume import Volume
 from classes.backup import Backup
 from classes.oneoff import OneOffFile
+from classes.shell import GnuShell, BusyBoxShell
 from utils.config import getHostsConfig
-
-ROOT_DIR = '/srv/backups/'
 
 def format_bytes(size_bytes):
 	'''Convert a byte count to a human-readable string (e.g. 1.2G, 340M)'''
@@ -24,17 +23,45 @@ def format_bytes(size_bytes):
 class Host:
 	def __init__(self, name):
 		self.name = name
-		self.domain = getHostsConfig()[name]["domain"]
-		self.connection = fabric.Connection(
-			host=self.domain,
-			user="lucos-backups",
-			forward_agent=True,
-		)
+		host_config = getHostsConfig()[name]
+		self.domain = host_config["domain"]
+		self.is_storage_only = host_config.get("is_storage_only", False)
+		self.backup_root = host_config.get("backup_root", "/srv/backups/")
+		self.ssh_gateway = host_config.get("ssh_gateway")
+
+		if self.ssh_gateway:
+			self.ssh_gateway_domain = getHostsConfig()[self.ssh_gateway]["domain"]
+			gateway = fabric.Connection(
+				host=self.ssh_gateway_domain,
+				user="lucos-backups",
+				forward_agent=True,
+			)
+			self.connection = fabric.Connection(
+				host=self.domain,
+				user="lucos-backups",
+				forward_agent=True,
+				gateway=gateway,
+			)
+		else:
+			self.ssh_gateway_domain = None
+			self.connection = fabric.Connection(
+				host=self.domain,
+				user="lucos-backups",
+				forward_agent=True,
+			)
+
+		shell_flavour = host_config.get("shell_flavour", "gnu")
+		if shell_flavour == "busybox":
+			self.shell = BusyBoxShell(self.connection, self.backup_root)
+		else:
+			self.shell = GnuShell(self.connection, self.backup_root)
 
 	def closeConnection(self):
 		self.connection.close()
 
 	def getVolumes(self):
+		if self.is_storage_only:
+			return []
 		raw_volumes = self.connection.run('docker volume ls --format json', hide=True, timeout=10).stdout.splitlines()
 		volumes = []
 		for raw_volume in raw_volumes:
@@ -42,73 +69,76 @@ class Host:
 		return volumes
 
 	def getOneOffFiles(self):
-		directory = "{ROOT_DIR}local/one-off/".format(ROOT_DIR=ROOT_DIR)
-		self.connection.run("mkdir -p {directory}".format(directory=directory), timeout=10)
-		self.connection.run("chmod g+w {directory}".format(directory=directory), timeout=10) # Allow any user in the group to add files to the one-off directory
-		filelist = []
-		raw_files = self.connection.run("ls -l --human-readable --time-style=long-iso --literal {directory}".format(directory=directory), hide=True, timeout=10).stdout.splitlines()
-		del raw_files[0] # Drop the header line from ls
-		for file_info in raw_files:
-			cols = file_info.split(maxsplit=7)
-			filelist.append(OneOffFile(
+		if self.is_storage_only:
+			return []
+		directory = "{backup_root}local/one-off/".format(backup_root=self.backup_root)
+		self.shell.ensure_one_off_dir(directory)
+		return [
+			OneOffFile(
 				host=self,
-				path=directory+cols[7],
-				modification_date=cols[5],
-				size=cols[4],
-			))
-		return filelist
+				path=f['path'],
+				modification_date=f['modification_date'],
+				size=f['size'],
+			)
+			for f in self.shell.list_one_off_files(directory)
+		]
+
+	def _outbound_ssh_args(self, target_host):
+		'''Build SSH option flags for outbound connections to target_host.'''
+		args = ['-o', 'StrictHostKeyChecking=no']
+		if target_host.ssh_gateway:
+			args += ['-o', 'ProxyJump={}'.format(target_host.ssh_gateway_domain)]
+		return args
+
+	def runOnRemote(self, target_host, command):
+		'''Run a command on target_host via SSH, routing through a gateway if configured.'''
+		ssh_args = ' '.join(self._outbound_ssh_args(target_host))
+		self.connection.run(
+			'ssh {} {} {}'.format(ssh_args, target_host.domain, command),
+			hide=True, timeout=10,
+		)
+
+	def copyTo(self, target_host, source, dest):
+		'''Copy a file to target_host via SCP, routing through a gateway if configured.'''
+		ssh_args = ' '.join(self._outbound_ssh_args(target_host))
+		self.connection.run(
+			'scp {} "{}" {}:"{}"'.format(ssh_args, source, target_host.domain, dest),
+			hide=True,
+		)
 
 	def copyFileTo(self, source_path, target_host, target_path):
-		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host), flush=True)
-		# Ensure the target directory exists
-		self.connection.run('ssh -o StrictHostKeyChecking=no {} mkdir -p {}'.format(target_host, os.path.dirname(target_path)), hide=True, timeout=10)
-		self.connection.run('scp "{}" {}:"{}"'.format(source_path, target_host, target_path), hide=True)
+		print("Copying {} from {} to {} on {}".format(source_path, self.domain, target_path, target_host.name), flush=True)
+		self.runOnRemote(target_host, 'mkdir -p {}'.format(os.path.dirname(target_path)))
+		self.copyTo(target_host, source_path, target_path)
 
 	def fileExistsRemotely(self, target_host, target_directory, target_filename):
 		try:
-			self.connection.run('ssh -o StrictHostKeyChecking=no {} \'ls -p "{}"\''.format(target_host, target_directory+target_filename), hide=True, timeout=10)
+			self.runOnRemote(target_host, 'ls -p "{}"'.format(target_directory + target_filename))
 			return True
-		except invoke.exceptions.UnexpectedExit as e:
+		except invoke.exceptions.UnexpectedExit:
 			return False
 
 	def checkDiskSpace(self):
-		raw_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $4}'", hide=True, timeout=10).stdout.strip())
-		readable_space_result = self.connection.run("df -Ph /srv/backups | tail -1 | awk '{print $4}'", hide=True, timeout=10).stdout.strip()
-		percentage_space_result = int(self.connection.run("df -P /srv/backups | tail -1 | awk '{print $5}' | sed 's/%//'", hide=True, timeout=10).stdout.strip())
-		return {
-			'free_bytes': raw_space_result,
-			'free_readable': readable_space_result,
-			'used_percentage': percentage_space_result,
-		}
+		return self.shell.disk_space()
 
 	def checkBackupFiles(self):
-		result = self.connection.run('ls -l --time-style=long-iso --literal /srv/backups', hide=True, timeout=10)
-		raw_files = result.stdout.splitlines()
-		del raw_files[0] # Drop the header line from ls
-		backup_files = []
-		for file_info in raw_files:
-			cols = file_info.split(maxsplit=7)
-			backup_files.append({
-				"name": cols[7],
-				"date": cols[5],
-			})
-		return backup_files
+		return self.shell.list_backup_dir()
 
 	def getBackups(self):
-		filelist = self.connection.run("find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\\t%s\\t%p\\n\"".format(ROOT_DIR=ROOT_DIR), hide=True, timeout=60).stdout.splitlines()
+		filelist = self.shell.find_backup_files()
 		backupList = []
 		backups = {}
 		for fileinfo in filelist:
-			mod_date, size_bytes, filepath = fileinfo.split('	', 2)
+			mod_date, size_bytes, filepath = fileinfo.split('\t', 2)
 			size = format_bytes(size_bytes)
-			directories = filepath.replace(ROOT_DIR, '').split('/')
-			location = directories.pop(0) # Should either be local or host
+			directories = filepath.replace(self.backup_root, '').split('/')
+			location = directories.pop(0)  # local, host, or external
 			if location == 'host':
-				source_hostname=directories.pop(0)
+				source_hostname = directories.pop(0)
 			elif location == 'local':
 				source_hostname = self.name
 			elif location == 'external':
-				source_hostname=directories.pop(0)
+				source_hostname = directories.pop(0)
 			backup_type = directories.pop(0)
 			filename = directories.pop()
 			if backup_type == 'volume' or backup_type == 'repository':
@@ -157,5 +187,3 @@ class Host:
 		for host in getHostsConfig():
 			hostlist.append(cls(host))
 		return hostlist
-
-
