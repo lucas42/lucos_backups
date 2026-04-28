@@ -353,6 +353,31 @@ class TestHostOutboundSSH:
 		assert 'xwing.s.l42.eu' in cmd, "ProxyJump must point to the gateway domain"
 		assert 'aurora.local' in cmd, "ssh command must target aurora's domain"
 
+	def test_outbound_ssh_args_skips_proxyjump_when_source_is_gateway(self):
+		"""When the source host IS the target's ssh_gateway, ProxyJump must be omitted.
+		Regression for the 2026-04-28 incident: xwing→aurora cross-host copies failed
+		with SSH error 255 because xwing was being told to ProxyJump through xwing
+		to reach aurora (recursive). xwing should connect directly to aurora.local
+		since it is the gateway by definition."""
+		from classes.host import Host
+		xwing = Host("xwing")
+		args = xwing._outbound_ssh_args(self.aurora)
+		# StrictHostKeyChecking should still be present.
+		assert 'StrictHostKeyChecking=no' in args
+		# ProxyJump must NOT be present.
+		assert not any('ProxyJump' in a for a in args), \
+			"ProxyJump must be omitted when source IS the target's ssh_gateway"
+
+	def test_run_on_remote_no_proxyjump_when_source_is_gateway(self):
+		"""runOnRemote on the gateway host must not include ProxyJump in the ssh command."""
+		from classes.host import Host
+		xwing = Host("xwing")
+		xwing.runOnRemote(self.aurora, 'ls /backups')
+		cmd = xwing.connection.run.call_args[0][0]
+		assert 'ProxyJump' not in cmd, \
+			"ssh command must NOT contain ProxyJump when source IS the gateway"
+		assert 'aurora.local' in cmd, "ssh command must still target aurora's domain"
+
 
 class TestHostStorageOnly:
     """Verify that a storage-only host skips volume and one-off file iteration."""
