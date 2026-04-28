@@ -408,3 +408,68 @@ class TestHostStorageOnly:
         result = self.host.getOneOffFiles()
         assert result == []
         self.host.connection.run.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Regression test: configy returns null for absent optional fields
+# ---------------------------------------------------------------------------
+
+class TestHostNullOptionalFields:
+	"""Regression test for #221.
+
+	configy.l42.eu serialises absent optional fields as explicit null (JSON null),
+	not by omitting the key. dict.get(key, default) only uses the default when the
+	key is absent — it returns None when the key is present with a null value.
+	Hosts where backup_root and shell_flavour are absent in hosts.yaml therefore
+	received None instead of their defaults, causing 'df -P None' and crashing the
+	backup cron for every existing source host after the aurora integration landed.
+	"""
+
+	FAKE_HOSTS_CONFIG = {
+		# Simulates the configy HTTP API shape: null values explicitly present
+		"avalon": {
+			"domain": "avalon.s.l42.eu",
+			"backup_root": None,      # explicit null — not absent
+			"is_storage_only": False,
+			"shell_flavour": None,    # explicit null — not absent
+			"ssh_gateway": None,
+		},
+	}
+
+	def setup_method(self):
+		sys.modules.setdefault("utils", MagicMock())
+		sys.modules["utils.config"] = MagicMock()
+
+		fake_fabric = MagicMock()
+		fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+		sys.modules["fabric"] = fake_fabric
+		sys.modules.setdefault("invoke", MagicMock())
+
+		import importlib
+		import classes.host
+		importlib.reload(classes.host)
+
+		self.host_patcher = patch("classes.host.getHostsConfig", return_value=self.FAKE_HOSTS_CONFIG)
+		self.host_patcher.start()
+
+		from classes.host import Host
+		self.host = Host("avalon")
+
+	def teardown_method(self):
+		self.host_patcher.stop()
+		sys.modules.pop("utils.config", None)
+		sys.modules.pop("utils", None)
+		sys.modules.pop("fabric", None)
+		sys.modules.pop("invoke", None)
+		sys.modules.pop("classes.host", None)
+
+	def test_backup_root_defaults_to_srv_backups_when_configy_returns_null(self):
+		"""backup_root falls back to /srv/backups/ when configy returns null (not absent).
+		Regression guard for #221: dict.get(key, default) returns None for explicit null."""
+		assert self.host.backup_root == "/srv/backups/"
+
+	def test_shell_is_gnushell_when_shell_flavour_is_null(self):
+		"""shell_flavour falls back to gnu when configy returns null.
+		Regression guard for #221: a None shell_flavour must not select BusyBoxShell."""
+		from classes.shell import GnuShell
+		assert isinstance(self.host.shell, GnuShell)
