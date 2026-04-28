@@ -44,6 +44,25 @@ class Repository:
 		downloadUrl = self.getAuthenticatedDownloadUrl()
 		date = datetime.today().strftime('%Y-%m-%d')
 		for host in Host.getAll():
+			# Skip storage-only hosts (e.g. aurora). They cannot fetch directly from
+			# GitHub via wget — aurora's bundled OpenSSL is too old to negotiate the
+			# TLS versions GitHub requires, so the wget below would fail and break
+			# the loop for all subsequent hosts.
+			#
+			# CONFLATION CAVEAT (#229 hot-fix, see #228 for the proper fix):
+			# is_storage_only semantically means "this host has no docker volumes /
+			# one-off files of its own to back up" — used by getVolumes() and
+			# getOneOffFiles() to short-circuit *source*-side iteration. Reusing it
+			# here as a proxy for "this host can't reach external HTTPS endpoints"
+			# is a related-but-not-identical concern that *coincides* on aurora
+			# (currently the only host with both characteristics). A future
+			# storage-only host with modern TLS would be unnecessarily skipped, and
+			# a future non-storage-only host with broken TLS would still hit the
+			# original failure mode. #228 tracks introducing a dedicated flag
+			# (e.g. can_reach_external_services) so the two concerns are properly
+			# separated.
+			if host.is_storage_only:
+				continue
 			directory = "{backup_root}external/github/repository".format(backup_root=host.backup_root)
 			archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
 			print("Archiving repo {name} to {host} at {archivePath}".format(name=self.name, host=host.name, archivePath=archivePath), flush=True)
