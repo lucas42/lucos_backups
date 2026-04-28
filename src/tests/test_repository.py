@@ -19,11 +19,17 @@ FAKE_RAWINFO = {
 }
 
 
-def make_host(name, backup_root):
-    """Build a mock Host with name, backup_root, and a recording connection."""
+def make_host(name, backup_root, is_storage_only=False):
+    """Build a mock Host with name, backup_root, is_storage_only flag, and a recording connection.
+
+    `is_storage_only` defaults to False so existing tests that pre-date the Bug D fix
+    keep their pre-existing behaviour. The Bug D regression test below exercises the
+    True path explicitly.
+    """
     h = MagicMock()
     h.name = name
     h.backup_root = backup_root
+    h.is_storage_only = is_storage_only
     h.connection = MagicMock()
     return h
 
@@ -144,3 +150,55 @@ class TestRepositoryBackup:
         """The module should not export a hardcoded ROOT_DIR constant any more.
         Per-host paths come from each host's own backup_root."""
         assert not hasattr(self.repository_module, "ROOT_DIR")
+
+    def test_backup_skips_storage_only_hosts(self):
+        """Storage-only hosts (e.g. aurora) must be skipped entirely by Repository.backup —
+        no mkdir, no wget, no closeConnection.
+
+        Regression for the 2026-04-28 Bug D failure: aurora's bundled wget cannot
+        negotiate modern TLS to GitHub, so when wget ran on aurora the per-repo
+        loop in Repository.backup raised, broke out of `for host in Host.getAll()`,
+        and prevented avalon/salvare/xwing from receiving their copies. With aurora
+        first in the alphabetical iteration order, every repo ended up backed up to
+        zero hosts.
+
+        This regression test guards both the skip behaviour and the knock-on
+        guarantee that non-storage-only hosts continue to receive backups when
+        a storage-only host is present in the iteration.
+
+        Note: this uses `is_storage_only` as a proxy for "can't reach external HTTPS",
+        a deliberate conflation flagged in the code comment and tracked in #228."""
+        aurora = make_host("aurora", "/share/backups/", is_storage_only=True)
+        avalon = make_host("avalon", "/srv/backups/", is_storage_only=False)
+        # aurora intentionally first to exercise the order-of-iteration consequence
+        # that motivated this fix (a failure on the first host would otherwise abort
+        # the whole loop).
+        repo = self._make_repo_with_hosts([aurora, avalon])
+
+        repo.backup()
+
+        # aurora must have received no commands at all.
+        assert aurora.connection.run.call_count == 0, \
+            "Repository.backup must not run any command on a storage-only host"
+        assert aurora.closeConnection.call_count == 0, \
+            "Repository.backup must not even open/close a connection on a storage-only host"
+
+        # avalon must still have received its mkdir + wget pair.
+        assert avalon.connection.run.call_count == 2, \
+            "Repository.backup must still send mkdir + wget to non-storage-only hosts"
+        assert "mkdir -p /srv/backups/external/github/repository" == avalon.connection.run.call_args_list[0][0][0]
+        assert "wget" in avalon.connection.run.call_args_list[1][0][0]
+        assert avalon.closeConnection.call_count == 1
+
+    def test_backup_does_not_skip_non_storage_only_hosts(self):
+        """Belt-and-braces: when no host is storage-only, every host receives mkdir + wget.
+        Guards against an over-broad skip that would skip hosts it shouldn't."""
+        avalon = make_host("avalon", "/srv/backups/", is_storage_only=False)
+        salvare = make_host("salvare", "/srv/backups/", is_storage_only=False)
+        repo = self._make_repo_with_hosts([avalon, salvare])
+
+        repo.backup()
+
+        for host in (avalon, salvare):
+            assert host.connection.run.call_count == 2, \
+                "Each non-storage-only host should receive mkdir + wget"
