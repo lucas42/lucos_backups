@@ -26,7 +26,7 @@ class Host:
 		host_config = getHostsConfig()[name]
 		self.domain = host_config["domain"]
 		self.is_storage_only = host_config.get("is_storage_only", False)
-		self.backup_root = host_config.get("backup_root", "/srv/backups/")
+		self.backup_root = host_config.get("backup_root") or "/srv/backups/"
 		self.ssh_gateway = host_config.get("ssh_gateway")
 
 		if self.ssh_gateway:
@@ -50,7 +50,7 @@ class Host:
 				forward_agent=True,
 			)
 
-		shell_flavour = host_config.get("shell_flavour", "gnu")
+		shell_flavour = host_config.get("shell_flavour") or "gnu"
 		if shell_flavour == "busybox":
 			self.shell = BusyBoxShell(self.connection, self.backup_root)
 		else:
