@@ -7,8 +7,6 @@ import requests
 from classes.host import Host
 from datetime import datetime
 
-ROOT_DIR = '/srv/backups/'
-
 if not os.environ.get("GITHUB_KEY"):
 	sys.exit("\033[91mGITHUB_KEY not set\033[0m")
 GITHUB_KEY=os.environ.get("GITHUB_KEY")
@@ -44,10 +42,10 @@ class Repository:
 
 	def backup(self):
 		downloadUrl = self.getAuthenticatedDownloadUrl()
-		directory = "{ROOT_DIR}external/github/repository".format(ROOT_DIR=ROOT_DIR)
 		date = datetime.today().strftime('%Y-%m-%d')
-		archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
 		for host in Host.getAll():
+			directory = "{backup_root}external/github/repository".format(backup_root=host.backup_root)
+			archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
 			print("Archiving repo {name} to {host} at {archivePath}".format(name=self.name, host=host.name, archivePath=archivePath), flush=True)
 			host.connection.run("mkdir -p {directory}".format(directory=directory), hide=True, timeout=3)
 			host.connection.run("wget \"{url}\" -O \"{archivePath}\"".format(url=downloadUrl, archivePath=archivePath), hide=True)

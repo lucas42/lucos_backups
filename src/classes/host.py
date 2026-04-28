@@ -84,9 +84,15 @@ class Host:
 		]
 
 	def _outbound_ssh_args(self, target_host):
-		'''Build SSH option flags for outbound connections to target_host.'''
+		'''Build SSH option flags for outbound connections to target_host.
+
+		If `self` IS the gateway for the target host, the ProxyJump flag is
+		omitted: there is no point asking xwing to ProxyJump through xwing
+		to reach aurora — the recursive connection fails with SSH error 255.
+		In that case xwing connects directly to aurora's domain (which it
+		can reach on the LAN since it is the gateway by definition).'''
 		args = ['-o', 'StrictHostKeyChecking=no']
-		if target_host.ssh_gateway:
+		if target_host.ssh_gateway and target_host.ssh_gateway_domain != self.domain:
 			args += ['-o', 'ProxyJump={}'.format(target_host.ssh_gateway_domain)]
 		return args
 
