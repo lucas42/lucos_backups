@@ -7,6 +7,7 @@ from schedule_tracker import updateScheduleTracker
 
 RETRY_DELAY_SECONDS = 5 * 60  # Retry after 5 minutes if any host fails tracking
 _retry_timer = None
+latestInfo = None  # Populated by fetchAllInfo(); None until the first run completes
 
 def fetchAllInfo():
 	global _retry_timer
@@ -89,4 +90,7 @@ def fetchAllInfo():
 def getAllInfo():
 	return latestInfo
 
-fetchAllInfo()
+# Start the first tracking run in a background thread so the HTTP server can
+# start immediately and answer healthchecks while data is being fetched.
+_initial_thread = threading.Thread(target=fetchAllInfo, daemon=True)
+_initial_thread.start()

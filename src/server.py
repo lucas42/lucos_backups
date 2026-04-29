@@ -64,6 +64,17 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		self.connection.close()
 	def infoController(self):
 		data = getAllInfo()
+		if data is None:
+			self.send_response(200)
+			self.send_header("Content-type", "application/json")
+			self.end_headers()
+			self.wfile.write(bytes(json.dumps({
+				"system": "lucos_backups",
+				"title": "Backups",
+				"ok": False,
+				"debug": "startup in progress",
+			}, indent="\t")+"\n\n", "utf-8"))
+			return
 		data_age = datetime.datetime.now(datetime.timezone.utc) - data["update_time"]
 		output = {
 			"system": "lucos_backups",
@@ -133,7 +144,14 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		self.wfile.write(bytes(json.dumps(output, indent="\t")+"\n\n", "utf-8"))
 	def summaryController(self):
 		checkAuth(self)
-		output = templateEnv.get_template("summary.html.jinja").render(getAllInfo())
+		data = getAllInfo()
+		if data is None:
+			self.send_response(503)
+			self.send_header("Content-type", "text/plain")
+			self.end_headers()
+			self.wfile.write(bytes("Startup in progress — backup data is being fetched, please try again shortly.\n", "utf-8"))
+			return
+		output = templateEnv.get_template("summary.html.jinja").render(data)
 		self.send_response(200)
 		self.send_header("Content-type", "text/html")
 		setAuthCookies(self)
@@ -143,6 +161,12 @@ class BackupsHandler(BaseHTTPRequestHandler):
 		checkAuth(self)
 		hostname = self.parsed.path.replace("/hosts/", "")
 		info = getAllInfo()
+		if info is None:
+			self.send_response(503)
+			self.send_header("Content-type", "text/plain")
+			self.end_headers()
+			self.wfile.write(bytes("Startup in progress — backup data is being fetched, please try again shortly.\n", "utf-8"))
+			return
 		if hostname in info['hosts']:
 			output = templateEnv.get_template("host.html.jinja").render({
 				'host': hostname,

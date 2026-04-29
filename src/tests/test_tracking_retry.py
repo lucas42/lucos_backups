@@ -1,9 +1,10 @@
 """
 Tests for the retry logic in utils.tracking.fetchAllInfo.
 
-The module calls fetchAllInfo() at import time, so we must mock all network
-dependencies before importing it.  The `tracking` fixture handles this once per
-module; individual tests reset mutable state (_retry_timer) before each call.
+The module starts fetchAllInfo() in a background daemon thread at import time,
+so we must mock all network dependencies before importing it.  The `tracking`
+fixture handles this once per module; individual tests reset mutable state
+(_retry_timer) before each call.
 """
 import sys
 import pytest
