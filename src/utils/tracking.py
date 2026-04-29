@@ -9,6 +9,11 @@ RETRY_DELAY_SECONDS = 5 * 60  # Retry after 5 minutes if any host fails tracking
 _retry_timer = None
 latestInfo = None  # Populated by fetchAllInfo(); None until the first run completes
 
+
+class TrackingNotReadyError(Exception):
+	"""Raised by getAllInfo() when the first tracking run hasn't completed yet."""
+	pass
+
 def fetchAllInfo():
 	global _retry_timer
 	# Cancel any pending retry — we're doing a fresh run now
@@ -88,6 +93,8 @@ def fetchAllInfo():
 		raise error
 
 def getAllInfo():
+	if latestInfo is None:
+		raise TrackingNotReadyError("Startup in progress — backup data is being fetched")
 	return latestInfo
 
 # Start the first tracking run in a background thread so the HTTP server can
