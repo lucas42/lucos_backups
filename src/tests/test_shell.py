@@ -498,3 +498,60 @@ class TestHostNullOptionalFields:
 		Regression guard for #221: a None shell_flavour must not select BusyBoxShell."""
 		from classes.shell import GnuShell
 		assert isinstance(self.host.shell, GnuShell)
+
+
+class TestHostCanReachExternalServices:
+	"""Tests for the can_reach_external_services field introduced in #228.
+
+	This flag separates "this host can wget/curl from public HTTPS endpoints"
+	from is_storage_only ("this host has no docker volumes of its own").
+
+	The configy API now always returns an explicit boolean (defaulting True
+	when absent from YAML), so host.py reads the value directly — no
+	None-coalescing needed here.
+	"""
+
+	def _make_host_with_config(self, config_value):
+		"""Construct a Host with a specific can_reach_external_services config value."""
+		hosts_config = {
+			"avalon": {
+				"domain": "avalon.s.l42.eu",
+				"backup_root": None,
+				"is_storage_only": False,
+				"shell_flavour": None,
+				"ssh_gateway": None,
+				"can_reach_external_services": config_value,
+			},
+		}
+		sys.modules.setdefault("utils", MagicMock())
+		sys.modules["utils.config"] = MagicMock()
+		fake_fabric = MagicMock()
+		fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+		sys.modules["fabric"] = fake_fabric
+		sys.modules.setdefault("invoke", MagicMock())
+
+		import importlib
+		import classes.host
+		importlib.reload(classes.host)
+
+		with patch("classes.host.getHostsConfig", return_value=hosts_config):
+			from classes.host import Host
+			host = Host("avalon")
+
+		sys.modules.pop("utils.config", None)
+		sys.modules.pop("utils", None)
+		sys.modules.pop("fabric", None)
+		sys.modules.pop("invoke", None)
+		sys.modules.pop("classes.host", None)
+		return host
+
+	def test_explicit_false_is_honoured(self):
+		"""When configy sends can_reach_external_services=false it must be respected.
+		This is aurora's case — old OpenSSL, can't reach GitHub codeload."""
+		host = self._make_host_with_config(False)
+		assert host.can_reach_external_services is False
+
+	def test_explicit_true_is_honoured(self):
+		"""When configy sends can_reach_external_services=true it passes through."""
+		host = self._make_host_with_config(True)
+		assert host.can_reach_external_services is True

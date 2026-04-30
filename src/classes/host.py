@@ -28,6 +28,11 @@ class Host:
 		self.is_storage_only = host_config.get("is_storage_only") or False
 		self.backup_root = host_config.get("backup_root") or "/srv/backups/"
 		self.ssh_gateway = host_config.get("ssh_gateway")
+		# can_reach_external_services: whether this host can wget/curl from public
+		# HTTPS endpoints (e.g. GitHub codeload).  Distinct from is_storage_only
+		# (which means "no docker volumes of its own").  The configy API always
+		# returns an explicit boolean (defaulting True when absent from YAML).
+		self.can_reach_external_services = host_config.get("can_reach_external_services", True)
 
 		if self.ssh_gateway:
 			self.ssh_gateway_domain = getHostsConfig()[self.ssh_gateway]["domain"]

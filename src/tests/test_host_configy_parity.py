@@ -271,3 +271,46 @@ class TestFixtureShape:
             "Fixture must contain at least one host with a non-null backup_root "
             "to test that explicit values are used when present."
         )
+
+    def test_can_reach_external_services_is_always_explicit_bool(self):
+        """can_reach_external_services must be an explicit bool in every fixture host.
+
+        Unlike optional fields (which are null when absent), the configy API now
+        always returns an explicit boolean for this field (default true).  The
+        fixture must reflect that — no host should have it absent or null."""
+        with open(FIXTURE_PATH) as f:
+            raw = yaml.safe_load(f)
+        for host in raw:
+            field = "can_reach_external_services"
+            assert field in host, (
+                f"Host '{host.get('id')}' is missing '{field}'. "
+                "The configy API always returns an explicit boolean — update the fixture."
+            )
+            assert isinstance(host[field], bool), (
+                f"Host '{host.get('id')}' has {field}={host[field]!r} — must be a bool, not null or absent."
+            )
+
+
+# ---------------------------------------------------------------------------
+# Tests: can_reach_external_services behaviour from configy API values
+# ---------------------------------------------------------------------------
+
+class TestCanReachExternalServices(HostTestBase):
+    """can_reach_external_services: the configy API always returns an explicit bool.
+
+    The default-to-true logic lives in the configy Rust schema
+    (#[serde(default = "default_true")]), so host.py reads the value directly."""
+
+    def setup_method(self):
+        self._setup_host_class(HOSTS_CONFIG)
+
+    def test_true_value_passed_through(self):
+        """When configy sends can_reach_external_services=true it is set on Host."""
+        host = self.Host("avalon")
+        assert host.can_reach_external_services is True
+
+    def test_false_value_passed_through(self):
+        """When configy sends can_reach_external_services=false it is set on Host.
+        This is aurora's case — old OpenSSL, can't reach GitHub codeload."""
+        host = self.Host("aurora")
+        assert host.can_reach_external_services is False
