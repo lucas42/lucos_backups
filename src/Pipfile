@@ -8,8 +8,8 @@ requests = "*"
 fabric = "*"
 pyyaml = "*"
 jinja2 = ">=3.1.6"
-lucos-loganne-pythonclient = "==1.0.34"
-lucos-schedule-tracker-pythonclient = "==1.0.28"
+lucos-loganne-pythonclient = "==1.0.35"
+lucos-schedule-tracker-pythonclient = "==1.0.30"
 
 [dev-packages]
 pytest = "*"
