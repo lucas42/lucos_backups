@@ -18,6 +18,23 @@ def toLondonTime(value):
 def breakUnderscores(value):
 	return value.replace("_", "​_​")
 
+def format_backup_without_original(bwo_key, all_backups):
+	"""Format one backups-without-original entry with storage-host coverage.
+
+	bwo_key: a string like "avalon/lucos_contacts_staticfiles"
+	all_backups: list of backup dicts (each has source_host, name, stored_host, type)
+
+	Returns a string like:
+	  "avalon/lucos_contacts_staticfiles (copies on: aurora, salvare, xwing)"
+	"""
+	stored_hosts = sorted({
+		b["stored_host"]
+		for b in all_backups
+		if b["type"] == "volume"
+		and "{}/{}".format(b["source_host"], b["name"]) == bwo_key
+	})
+	return "{} (copies on: {})".format(bwo_key, ", ".join(stored_hosts))
+
 templateEnv = Environment(loader=FileSystemLoader("templates/"), autoescape=select_autoescape())
 templateEnv.filters["london_time"] = toLondonTime
 templateEnv.filters["break_underscores"] = breakUnderscores
@@ -122,7 +139,10 @@ class BackupsHandler(BaseHTTPRequestHandler):
 				"backup-without-original": {
 					"techDetail": "Whether any backups exist for volumes that are no longer present on their source host",
 					"ok": (len(data["backupsWithoutOriginals"]) == 0),
-					"debug": "Backups without originals: "+", ".join(data["backupsWithoutOriginals"]),
+					"debug": "Backups without originals: "+", ".join(
+						format_backup_without_original(bwo, data["backups"])
+						for bwo in data["backupsWithoutOriginals"]
+					),
 				},
 			},
 			"metrics": {
