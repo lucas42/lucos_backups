@@ -119,6 +119,11 @@ class BackupsHandler(BaseHTTPRequestHandler):
 					"ok": (len(data["hostsFailedTracking"]) == 0),
 					"debug": "Hosts which failed tracking: "+", ".join(["{}: {}".format(host.domain, err) for host, err in data["hostsFailedTracking"].items()]),
 				},
+				"backup-without-original": {
+					"techDetail": "Whether any backups exist for volumes that are no longer present on their source host",
+					"ok": (len(data["backupsWithoutOriginals"]) == 0),
+					"debug": "Backups without originals: "+", ".join(data["backupsWithoutOriginals"]),
+				},
 			},
 			"metrics": {
 				"host-count": {
