@@ -205,6 +205,13 @@ docker run --rm \
 	alpine:latest \
 	tar -C /raw-data -xzf "${ARCHIVE_DIR}/${ARCHIVE_FILE}"
 
+# Build the restart command before cleaning up the temp dir (COMPOSE_DIR becomes invalid after cleanup)
+if [ -n "$TEMP_COMPOSE_DIR" ]; then
+	RESTART_CMD="cd /srv/${PROJECT_NAME:-<project>} && docker compose up -d  # fetch compose file from GitHub first if not present"
+else
+	RESTART_CMD="cd ${COMPOSE_DIR} && docker compose up -d"
+fi
+
 # Clean up any temporary compose dir
 [ -n "$TEMP_COMPOSE_DIR" ] && rm -rf "$TEMP_COMPOSE_DIR"
 
@@ -213,6 +220,6 @@ echo "=== Restore Complete ==="
 echo "Volume '$VOLUME_NAME' restored from '$ARCHIVE_PATH'."
 echo ""
 echo "Next steps:"
-echo "  - Restart services: docker compose -f <project-compose-file> up -d"
+echo "  - Restart services: ${RESTART_CMD}"
 echo "  - Verify the restored data looks correct before resuming normal operations"
 echo "  - See docs/restore-runbook.md in lucos_backups for volume-specific verification steps"
