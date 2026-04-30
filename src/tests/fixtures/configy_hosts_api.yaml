@@ -1,0 +1,50 @@
+# Fixture representing the configy HTTP API response for /hosts
+#
+# This is a list format, as returned by https://configy.l42.eu/hosts
+# (Accept: application/x-yaml).  The critical difference from the local
+# development YAML (config.yaml written by fetchConfig) is that the API
+# sends explicit null for absent optional fields rather than omitting them.
+#
+# This file should be regenerated when the configy schema changes
+# (add/remove fields, change defaults).  The regeneration step is itself
+# a forcing function for catching schema drift between dev and production.
+#
+# Optional fields covered:
+#   - backup_root     (default: /srv/backups/)
+#   - shell_flavour   (default: gnu)
+#   - is_storage_only (default: False)
+#   - ssh_gateway     (default: None — no gateway)
+
+# avalon: a standard source host.  All optional fields absent in the local
+# YAML but present-and-null in the API response.
+- id: avalon
+  domain: avalon.s.l42.eu
+  backup_root: null
+  shell_flavour: null
+  is_storage_only: null
+  ssh_gateway: null
+
+# xwing: a standard source host and gateway for salvare/aurora.
+- id: xwing
+  domain: xwing.s.l42.eu
+  backup_root: null
+  shell_flavour: null
+  is_storage_only: null
+  ssh_gateway: null
+
+# salvare: a source host behind a gateway (xwing).
+- id: salvare
+  domain: salvare.s.l42.eu
+  backup_root: null
+  shell_flavour: null
+  is_storage_only: null
+  ssh_gateway: xwing
+
+# aurora: a storage-only host with a non-default backup_root and BusyBox shell.
+# Represents the class of host where optional fields are explicitly set (non-null).
+- id: aurora
+  domain: aurora.local
+  backup_root: /share/backups/
+  shell_flavour: busybox
+  is_storage_only: true
+  ssh_gateway: null
