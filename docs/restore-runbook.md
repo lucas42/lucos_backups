@@ -20,7 +20,7 @@ Docker Compose applies three labels to volumes it manages:
 | `com.docker.compose.version` | `2.24.0` |
 | `com.docker.compose.volume` | `postgres_data` |
 
-A bare `docker volume create` or `docker run --volume` does not apply these labels. **Always use the `restore-volume.sh` script or the manual equivalent below** — both recreate the volume through Docker Compose before populating it.
+A bare `docker volume create` (without explicit `--label` flags) or `docker run --volume` does not apply these labels. **Always use the `restore-volume.sh` script or the manual equivalent below.** The manual path offers two options: recreating via `docker compose up --no-start` (which applies labels automatically), or using `docker volume create --label` with the correct Compose label names (see step 3b below).
 
 To check whether an existing volume has labels:
 
@@ -72,6 +72,13 @@ The script:
 
 After the script completes, restart the service and verify (see [volume-specific sections](#volume-specific-notes) below).
 
+> **Note:** When `docker-compose.yml` is not available locally (the usual production case), the script fetches it automatically from GitHub (`raw.githubusercontent.com`). This auto-fetch path has two hard dependencies:
+>
+> 1. **Network access** from the production host to GitHub (`raw.githubusercontent.com`)
+> 2. **A pullable Docker image** — `docker compose up --no-start` must resolve the service's image to create the container and apply Compose labels to the volume. If the image isn't cached locally and can't be pulled, the volume recreation step fails.
+>
+> In a severe incident (network outage, fresh host rebuild, or registry unreachable), both of these may be unavailable. If the script fails at the fetch or volume-creation step, fall back to the manual procedure below. If the image can't be pulled, use step 3b of the manual procedure (`docker volume create --label`) to apply the Compose labels without needing the image.
+
 ### Manual equivalent
 
 If you need to do it by hand:
@@ -83,9 +90,16 @@ docker stop $(docker ps --filter volume=<volume_name> --format "{{.ID}}")
 # 2. Delete the existing volume
 docker volume rm <volume_name>
 
-# 3. Recreate via Docker Compose (applies correct labels)
+# 3a. Recreate via Docker Compose (applies correct labels — requires a pullable image)
 cd /srv/<project_name>
 docker compose up --no-start
+
+# 3b. Alternative if the image can't be pulled (e.g. registry unreachable):
+#     Apply the Compose labels manually — no image needed
+docker volume create \
+  --label com.docker.compose.project=<project_name> \
+  --label com.docker.compose.volume=<volume_short_name> \
+  <volume_name>
 
 # 4. Restore data from archive
 ARCHIVE_DIR=$(dirname <archive_path>)
