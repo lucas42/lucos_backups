@@ -161,8 +161,10 @@ class TestNullIsStorageOnly(HostTestBase):
         explicitly so a future refactor that changes the attribute type
         (e.g. raising on None) would be caught here."""
         host = self.Host("avalon")
-        assert not host.is_storage_only, (
-            "is_storage_only=null must not make the host behave as storage-only"
+        assert host.is_storage_only is False, (
+            "is_storage_only=null must be False (not None) — dict.get(key, False) "
+            "returns None when the key is present with a null value, which is the "
+            "same bug class as the 2026-04-28 incident"
         )
 
     def test_explicit_true_is_storage_only_is_respected(self):

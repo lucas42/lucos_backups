@@ -25,7 +25,7 @@ class Host:
 		self.name = name
 		host_config = getHostsConfig()[name]
 		self.domain = host_config["domain"]
-		self.is_storage_only = host_config.get("is_storage_only", False)
+		self.is_storage_only = host_config.get("is_storage_only") or False
 		self.backup_root = host_config.get("backup_root") or "/srv/backups/"
 		self.ssh_gateway = host_config.get("ssh_gateway")
 
