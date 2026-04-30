@@ -1,3 +1,4 @@
+#!/bin/bash
 ## Restores a Docker volume from a backup archive.
 ## The volume is recreated via Docker Compose to ensure correct labels are applied,
 ## which prevents lucos_backups tracking failures caused by missing Compose labels.
@@ -9,7 +10,6 @@
 ##   compose_dir  - (Optional) Directory containing docker-compose.yml.
 ##                  If omitted, auto-detected from volume labels or /srv/ convention.
 ##
-#!/bin/bash
 set -euo pipefail
 
 VOLUME_NAME="${1:-}"
