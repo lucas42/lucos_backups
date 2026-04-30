@@ -161,14 +161,23 @@ fi
 
 echo ""
 
-# --- Stop containers using this volume ---
+# --- Stop any running containers using this volume ---
 echo "Stopping containers using volume '$VOLUME_NAME'..."
-CONTAINERS=$(docker ps --filter volume="$VOLUME_NAME" --format "{{.ID}}" 2>/dev/null || true)
-if [ -n "$CONTAINERS" ]; then
-	echo "$CONTAINERS" | xargs docker stop
+RUNNING=$(docker ps --filter volume="$VOLUME_NAME" --format "{{.ID}}" 2>/dev/null || true)
+if [ -n "$RUNNING" ]; then
+	echo "$RUNNING" | xargs docker stop
 	echo "Containers stopped."
 else
 	echo "No running containers found using this volume."
+fi
+
+# Remove ALL containers referencing this volume (including stopped/exited/created)
+# docker volume rm fails if any container (even stopped/exited) still references the volume
+ALL=$(docker ps -a --filter volume="$VOLUME_NAME" --format "{{.ID}}" 2>/dev/null || true)
+if [ -n "$ALL" ]; then
+	echo "Removing containers referencing volume '$VOLUME_NAME'..."
+	echo "$ALL" | xargs docker rm
+	echo "Containers removed."
 fi
 
 # --- Delete existing volume ---
