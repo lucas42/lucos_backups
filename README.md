@@ -13,6 +13,10 @@ The following scripts are to be run manually by a privleged user:
 * __init-host.sh <hostname>__ - sets up a host so the backups service can interact with it.
 * __restore-volume.sh <volume_name> <archive_path>__ - restores a Docker volume from a backup archive on a production host. Run on the host where the volume lives; see [docs/restore-runbook.md](docs/restore-runbook.md) for full instructions.
 
+## Restoring a Volume
+
+See [docs/restore-runbook.md](docs/restore-runbook.md) for the full restore runbook, including volume-specific notes and post-restore verification steps.
+
 ## Running
 
 `docker compose up --build`
