@@ -60,6 +60,28 @@ def fetchAllInfo():
 					repo["backups"].append(backup)
 
 		info["notOnHost"] = Volume.getMissing(info["volumes"])
+
+		# Find backups for volumes that no longer exist on their source host.
+		# This could indicate accidental deletion, a failed restore, or a volume
+		# removed without cleaning up its backups.
+		# Hosts that failed tracking are excluded — their volume state is unknown.
+		failed_host_names = {host.name for host in info["hostsFailedTracking"]}
+		live_volume_keys = {(v["source_host"], v["name"]) for v in info["volumes"]}
+		seen_backup_volume_keys = set()
+		backups_without_originals = []
+		for backup in info["backups"]:
+			if backup["type"] != "volume":
+				continue
+			key = (backup["source_host"], backup["name"])
+			if key in seen_backup_volume_keys:
+				continue
+			seen_backup_volume_keys.add(key)
+			if backup["source_host"] in failed_host_names:
+				continue
+			if key not in live_volume_keys:
+				backups_without_originals.append("{}/{}".format(backup["source_host"], backup["name"]))
+		info["backupsWithoutOriginals"] = backups_without_originals
+
 		info["update_time"] = datetime.datetime.now(datetime.timezone.utc)
 
 		# Only updates the global variable once all info is fetched
