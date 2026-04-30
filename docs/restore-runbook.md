@@ -72,6 +72,13 @@ The script:
 
 After the script completes, restart the service and verify (see [volume-specific sections](#volume-specific-notes) below).
 
+> **Note:** When `docker-compose.yml` is not available locally (the usual production case), the script fetches it automatically from GitHub (`raw.githubusercontent.com`). This auto-fetch path has two hard dependencies:
+>
+> 1. **Network access** from the production host to GitHub (`raw.githubusercontent.com`)
+> 2. **A pullable Docker image** — `docker compose up --no-start` must resolve the service's image to create the container and apply Compose labels to the volume. If the image isn't cached locally and can't be pulled, the volume recreation step fails.
+>
+> In a severe incident (network outage, fresh host rebuild, or registry unreachable), both of these may be unavailable. If the script fails at the fetch or volume-creation step, fall back to the manual procedure below and create the volume with `docker volume create --label ...` to apply the Compose labels by hand.
+
 ### Manual equivalent
 
 If you need to do it by hand:
