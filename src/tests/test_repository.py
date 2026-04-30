@@ -19,17 +19,17 @@ FAKE_RAWINFO = {
 }
 
 
-def make_host(name, backup_root, is_storage_only=False):
-    """Build a mock Host with name, backup_root, is_storage_only flag, and a recording connection.
+def make_host(name, backup_root, can_reach_external_services=True):
+    """Build a mock Host with name, backup_root, can_reach_external_services flag, and a recording connection.
 
-    `is_storage_only` defaults to False so existing tests that pre-date the Bug D fix
-    keep their pre-existing behaviour. The Bug D regression test below exercises the
-    True path explicitly.
+    `can_reach_external_services` defaults to True so existing tests work without
+    explicit flag setting. The Bug D regression test uses False explicitly to simulate
+    aurora (broken TLS / can't wget from GitHub).
     """
     h = MagicMock()
     h.name = name
     h.backup_root = backup_root
-    h.is_storage_only = is_storage_only
+    h.can_reach_external_services = can_reach_external_services
     h.connection = MagicMock()
     return h
 
@@ -151,9 +151,9 @@ class TestRepositoryBackup:
         Per-host paths come from each host's own backup_root."""
         assert not hasattr(self.repository_module, "ROOT_DIR")
 
-    def test_backup_skips_storage_only_hosts(self):
-        """Storage-only hosts (e.g. aurora) must be skipped entirely by Repository.backup —
-        no mkdir, no wget, no closeConnection.
+    def test_backup_skips_hosts_that_cannot_reach_external_services(self):
+        """Hosts with can_reach_external_services=False must be skipped entirely by
+        Repository.backup — no mkdir, no wget, no closeConnection.
 
         Regression for the 2026-04-28 Bug D failure: aurora's bundled wget cannot
         negotiate modern TLS to GitHub, so when wget ran on aurora the per-repo
@@ -163,13 +163,14 @@ class TestRepositoryBackup:
         zero hosts.
 
         This regression test guards both the skip behaviour and the knock-on
-        guarantee that non-storage-only hosts continue to receive backups when
-        a storage-only host is present in the iteration.
+        guarantee that can_reach_external_services=True hosts continue to receive
+        backups even when a non-reachable host is present in the iteration.
 
-        Note: this uses `is_storage_only` as a proxy for "can't reach external HTTPS",
-        a deliberate conflation flagged in the code comment and tracked in #228."""
-        aurora = make_host("aurora", "/share/backups/", is_storage_only=True)
-        avalon = make_host("avalon", "/srv/backups/", is_storage_only=False)
+        The can_reach_external_services flag is now the correct gate (#228) — it
+        is distinct from is_storage_only (whether the host has its own docker
+        volumes to back up), which must not be conflated with external reachability."""
+        aurora = make_host("aurora", "/share/backups/", can_reach_external_services=False)
+        avalon = make_host("avalon", "/srv/backups/", can_reach_external_services=True)
         # aurora intentionally first to exercise the order-of-iteration consequence
         # that motivated this fix (a failure on the first host would otherwise abort
         # the whole loop).
@@ -179,26 +180,26 @@ class TestRepositoryBackup:
 
         # aurora must have received no commands at all.
         assert aurora.connection.run.call_count == 0, \
-            "Repository.backup must not run any command on a storage-only host"
+            "Repository.backup must not run any command on a host that can't reach external services"
         assert aurora.closeConnection.call_count == 0, \
-            "Repository.backup must not even open/close a connection on a storage-only host"
+            "Repository.backup must not even open/close a connection on such a host"
 
         # avalon must still have received its mkdir + wget pair.
         assert avalon.connection.run.call_count == 2, \
-            "Repository.backup must still send mkdir + wget to non-storage-only hosts"
+            "Repository.backup must still send mkdir + wget to hosts that can reach external services"
         assert "mkdir -p /srv/backups/external/github/repository" == avalon.connection.run.call_args_list[0][0][0]
         assert "wget" in avalon.connection.run.call_args_list[1][0][0]
         assert avalon.closeConnection.call_count == 1
 
-    def test_backup_does_not_skip_non_storage_only_hosts(self):
-        """Belt-and-braces: when no host is storage-only, every host receives mkdir + wget.
-        Guards against an over-broad skip that would skip hosts it shouldn't."""
-        avalon = make_host("avalon", "/srv/backups/", is_storage_only=False)
-        salvare = make_host("salvare", "/srv/backups/", is_storage_only=False)
+    def test_backup_does_not_skip_hosts_that_can_reach_external_services(self):
+        """Belt-and-braces: when all hosts can_reach_external_services, every host
+        receives mkdir + wget. Guards against an over-broad skip."""
+        avalon = make_host("avalon", "/srv/backups/", can_reach_external_services=True)
+        salvare = make_host("salvare", "/srv/backups/", can_reach_external_services=True)
         repo = self._make_repo_with_hosts([avalon, salvare])
 
         repo.backup()
 
         for host in (avalon, salvare):
             assert host.connection.run.call_count == 2, \
-                "Each non-storage-only host should receive mkdir + wget"
+                "Each host with can_reach_external_services=True should receive mkdir + wget"

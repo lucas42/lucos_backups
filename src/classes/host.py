@@ -28,6 +28,12 @@ class Host:
 		self.is_storage_only = host_config.get("is_storage_only") or False
 		self.backup_root = host_config.get("backup_root") or "/srv/backups/"
 		self.ssh_gateway = host_config.get("ssh_gateway")
+		# can_reach_external_services: whether this host can wget/curl from public
+		# HTTPS endpoints (e.g. GitHub codeload).  Distinct from is_storage_only
+		# (which means "no docker volumes of its own").  Defaults to True for
+		# backward compatibility; set to false in configy for hosts with broken TLS.
+		_can_reach = host_config.get("can_reach_external_services")
+		self.can_reach_external_services = True if _can_reach is None else _can_reach
 
 		if self.ssh_gateway:
 			self.ssh_gateway_domain = getHostsConfig()[self.ssh_gateway]["domain"]

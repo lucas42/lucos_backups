@@ -44,24 +44,13 @@ class Repository:
 		downloadUrl = self.getAuthenticatedDownloadUrl()
 		date = datetime.today().strftime('%Y-%m-%d')
 		for host in Host.getAll():
-			# Skip storage-only hosts (e.g. aurora). They cannot fetch directly from
-			# GitHub via wget — aurora's bundled OpenSSL is too old to negotiate the
-			# TLS versions GitHub requires, so the wget below would fail and break
-			# the loop for all subsequent hosts.
-			#
-			# CONFLATION CAVEAT (#229 hot-fix, see #228 for the proper fix):
-			# is_storage_only semantically means "this host has no docker volumes /
-			# one-off files of its own to back up" — used by getVolumes() and
-			# getOneOffFiles() to short-circuit *source*-side iteration. Reusing it
-			# here as a proxy for "this host can't reach external HTTPS endpoints"
-			# is a related-but-not-identical concern that *coincides* on aurora
-			# (currently the only host with both characteristics). A future
-			# storage-only host with modern TLS would be unnecessarily skipped, and
-			# a future non-storage-only host with broken TLS would still hit the
-			# original failure mode. #228 tracks introducing a dedicated flag
-			# (e.g. can_reach_external_services) so the two concerns are properly
-			# separated.
-			if host.is_storage_only:
+			# Skip hosts that cannot reach external HTTPS endpoints (e.g. aurora,
+			# whose bundled OpenSSL is too old to negotiate the TLS versions that
+			# GitHub codeload requires). The dedicated can_reach_external_services
+			# flag is the correct gate here — is_storage_only is a distinct concern
+			# (whether the host has its own docker volumes to back up) and must not
+			# be conflated with external-network reachability (#228).
+			if not host.can_reach_external_services:
 				continue
 			directory = "{backup_root}external/github/repository".format(backup_root=host.backup_root)
 			archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
