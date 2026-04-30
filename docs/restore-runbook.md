@@ -106,7 +106,7 @@ docker compose up -d
 
 ### PostgreSQL databases
 
-**Volumes:** `lucos_photos_postgres_data`, `lucos_contacts_db_data`, `lucos_eolas_db_data`, `lucos_media_metadata_api_db`
+**Volumes:** `lucos_photos_postgres_data`, `lucos_contacts_db_data`, `lucos_eolas_db_data`
 
 **Restore:**
 
@@ -118,12 +118,15 @@ cd /srv/<project_name> && docker compose up -d
 **Verify:** Check the database is accepting connections and data looks intact:
 
 ```sh
-# For lucos_photos
-docker exec lucos_photos_db psql -U postgres -c '\dt'
-docker exec lucos_photos_db psql -U postgres -d lucos_photos -c 'SELECT COUNT(*) FROM photos;'
+# For lucos_photos (user=photos, db=photos, container=lucos_photos_postgres)
+docker exec lucos_photos_postgres psql -U photos -c '\dt'
+docker exec lucos_photos_postgres psql -U photos -d photos -c 'SELECT COUNT(*) FROM media_item;'
 
-# For lucos_contacts
+# For lucos_contacts (default postgres user, container=lucos_contacts_db)
 docker exec lucos_contacts_db psql -U postgres -c '\dt'
+
+# For lucos_eolas (default postgres user, db=postgres, container=lucos_eolas_db)
+docker exec lucos_eolas_db psql -U postgres -d postgres -c '\dt'
 ```
 
 Also check the service's `/_info` endpoint responds correctly.
@@ -137,7 +140,7 @@ Also check the service's `/_info` endpoint responds correctly.
 
 ### File storage volumes
 
-**Volumes:** `lucos_photos_photos`, `lucos_photos_uploads`, `lucos_notes_stateFile`, `lucos_media_manager_stateFile`, `lucos_media_metadata_api_exports`
+**Volumes:** `lucos_photos_photos`, `lucos_photos_uploads`, `lucos_notes_stateFile`, `lucos_media_manager_stateFile`, `lucos_media_metadata_api_exports`, `lucos_media_metadata_api_db`
 
 **Restore:**
 
@@ -153,6 +156,12 @@ docker run --rm --volume <volume_name>:/data alpine:latest ls -la /data
 ```
 
 For `lucos_photos_photos`, confirm a sample of original files and derivatives are present and the API can serve them.
+
+For `lucos_media_metadata_api_db`, the volume contains a SQLite file at `media.sqlite` (not a PostgreSQL database). Confirm it is present and non-empty:
+
+```sh
+docker run --rm --volume lucos_media_metadata_api_db:/data alpine:latest ls -lh /data/media.sqlite
+```
 
 **Side effects:** Only data created after the backup date is lost. No cross-volume effects.
 
