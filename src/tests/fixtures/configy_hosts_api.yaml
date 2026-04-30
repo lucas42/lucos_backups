@@ -10,10 +10,13 @@
 # a forcing function for catching schema drift between dev and production.
 #
 # Optional fields covered:
-#   - backup_root     (default: /srv/backups/)
-#   - shell_flavour   (default: gnu)
-#   - is_storage_only (default: False)
-#   - ssh_gateway     (default: None — no gateway)
+#   - backup_root                  (default: /srv/backups/)
+#   - shell_flavour                (default: gnu)
+#   - is_storage_only              (default: False)
+#   - ssh_gateway                  (default: None — no gateway)
+#
+# Non-optional boolean fields (always explicit in API response):
+#   - can_reach_external_services  (default: true in configy schema)
 
 # avalon: a standard source host.  All optional fields absent in the local
 # YAML but present-and-null in the API response.
@@ -23,6 +26,7 @@
   shell_flavour: null
   is_storage_only: null
   ssh_gateway: null
+  can_reach_external_services: true
 
 # xwing: a standard source host and gateway for salvare/aurora.
 - id: xwing
@@ -31,6 +35,7 @@
   shell_flavour: null
   is_storage_only: null
   ssh_gateway: null
+  can_reach_external_services: true
 
 # salvare: a source host behind a gateway (xwing).
 - id: salvare
@@ -39,12 +44,15 @@
   shell_flavour: null
   is_storage_only: null
   ssh_gateway: xwing
+  can_reach_external_services: true
 
 # aurora: a storage-only host with a non-default backup_root and BusyBox shell.
 # Represents the class of host where optional fields are explicitly set (non-null).
+# can_reach_external_services is false — aurora's OpenSSL is too old for GitHub codeload.
 - id: aurora
   domain: aurora.local
   backup_root: /share/backups/
   shell_flavour: busybox
   is_storage_only: true
   ssh_gateway: null
+  can_reach_external_services: false
