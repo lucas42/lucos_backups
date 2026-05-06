@@ -9,10 +9,8 @@ Covers:
 - toKeep() age-banding logic.
 """
 from datetime import date, timedelta
-from unittest.mock import MagicMock, call
-import pytest
+from unittest.mock import MagicMock
 import sys
-import importlib
 
 
 # ---------------------------------------------------------------------------
