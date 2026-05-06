@@ -53,21 +53,27 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 
 	for host in Host.getAll():
 		print("Host:", host.domain, flush=True)
-		for volume in host.getVolumes():
-			try:
-				backupCount += volume.backup()
-			except Exception as error:
-				print("\033[91m** Error backing up volume {} ** {}\033[0m".format(volume.name, error), flush=True)
-				traceback.print_exception(error)
-				failures.append("volume:{}/{}".format(host.domain, volume.name))
-		for file in host.getOneOffFiles():
-			try:
-				backupCount += file.backup()
-			except Exception as error:
-				print("\033[91m** Error backing up file {} ** {}\033[0m".format(file.name, error), flush=True)
-				traceback.print_exception(error)
-				failures.append("file:{}/{}".format(host.domain, file.name))
-		host.closeConnection()
+		try:
+			for volume in host.getVolumes():
+				try:
+					backupCount += volume.backup()
+				except Exception as error:
+					print("\033[91m** Error backing up volume {} ** {}\033[0m".format(volume.name, error), flush=True)
+					traceback.print_exception(error)
+					failures.append("volume:{}/{}".format(host.domain, volume.name))
+			for file in host.getOneOffFiles():
+				try:
+					backupCount += file.backup()
+				except Exception as error:
+					print("\033[91m** Error backing up file {} ** {}\033[0m".format(file.name, error), flush=True)
+					traceback.print_exception(error)
+					failures.append("file:{}/{}".format(host.domain, file.name))
+		except Exception as error:
+			print("\033[91m** Error connecting to host {} ** {}\033[0m".format(host.domain, error), flush=True)
+			traceback.print_exception(error)
+			failures.append("{} (host unreachable)".format(host.domain))
+		finally:
+			host.closeConnection()
 
 	for repo in Repository.getAll():
 		try:

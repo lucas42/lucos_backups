@@ -1,5 +1,6 @@
 """
-Unit tests for Backup.prune() and Backup.toKeep().
+Unit tests for Backup.prune() and Backup.toKeep(), and for the
+prune-backups.py script's per-host failure isolation.
 
 Covers:
 - The rm command sent to the host connection uses `rm -f` (not `rm -vf`),
@@ -7,9 +8,13 @@ Covers:
 - Dryrun mode uses `ls` / `echo` and never calls `rm`.
 - prune() returns the correct count of deleted instances.
 - toKeep() age-banding logic.
+- Script-level: an unreachable host does not crash the run; remaining
+  hosts are processed and schedule-tracker is updated correctly.
 """
+import importlib.util
+import os
 from datetime import date, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import sys
 
 
@@ -198,3 +203,115 @@ class TestToKeep:
 		assert b2.toKeep(inst_a) is True
 		assert b2.toKeep(inst_b) is False
 		assert b2.toKeep(inst_c) is False
+
+
+# ---------------------------------------------------------------------------
+# prune-backups.py script — per-host failure isolation
+# ---------------------------------------------------------------------------
+
+def _stub_prune_modules():
+	"""Inject MagicMock stubs for all external imports in prune-backups.py."""
+	return {
+		"loganne": MagicMock(),
+		"schedule_tracker": MagicMock(),
+		"classes.host": MagicMock(),
+	}
+
+
+def _import_prune_script(stubs):
+	"""(Re-)import scripts/prune-backups.py with the given stubs active."""
+	sys.modules.pop("scripts.prune-backups", None)
+	sys.modules.pop("scripts", None)
+	with patch.dict("sys.modules", stubs):
+		spec = importlib.util.spec_from_file_location(
+			"scripts.prune-backups",
+			os.path.join(os.path.dirname(__file__), "..", "scripts", "prune-backups.py"),
+		)
+		module = importlib.util.module_from_spec(spec)
+		spec.loader.exec_module(module)
+	return module
+
+
+class TestPruneScript:
+	"""Integration tests for the prune-backups.py script's per-host isolation."""
+
+	def _get_module_and_stubs(self):
+		stubs = _stub_prune_modules()
+		module = _import_prune_script(stubs)
+		return module, stubs
+
+	def test_host_unreachable_does_not_crash_run(self):
+		"""If getBackups() raises on one host, the script continues with remaining hosts."""
+		module, stubs = self._get_module_and_stubs()
+
+		host_bad = MagicMock()
+		host_bad.domain = "salvare.l42.eu"
+		host_bad.getBackups.side_effect = Exception("SSH connection refused")
+
+		host_good = MagicMock()
+		host_good.domain = "aurora.local"
+		host_good.getBackups.return_value = []
+
+		stubs["classes.host"].Host.getAll.return_value = [host_bad, host_good]
+
+		# Must not raise
+		module.run()
+
+		# Good host should still have been processed
+		host_good.getBackups.assert_called_once()
+
+	def test_unreachable_host_closes_connection(self):
+		"""closeConnection() is called on an unreachable host so the SSH handle is released."""
+		module, stubs = self._get_module_and_stubs()
+
+		host_bad = MagicMock()
+		host_bad.domain = "salvare.l42.eu"
+		host_bad.getBackups.side_effect = Exception("No route to host")
+
+		stubs["classes.host"].Host.getAll.return_value = [host_bad]
+
+		module.run()
+
+		host_bad.closeConnection.assert_called_once()
+
+	def test_unreachable_host_records_failure(self):
+		"""An unreachable host is included in the failures list passed to schedule-tracker."""
+		module, stubs = self._get_module_and_stubs()
+
+		host_bad = MagicMock()
+		host_bad.domain = "salvare.l42.eu"
+		host_bad.getBackups.side_effect = Exception("No valid connections")
+
+		stubs["classes.host"].Host.getAll.return_value = [host_bad]
+		mock_tracker = stubs["schedule_tracker"].updateScheduleTracker
+
+		module.run()
+
+		failure_calls = [c for c in mock_tracker.call_args_list
+						 if c.kwargs.get("success") is False]
+		assert failure_calls, "updateScheduleTracker(success=False) must be called when a host is unreachable"
+		message = failure_calls[0].kwargs.get("message", "")
+		assert "salvare.l42.eu" in message
+
+	def test_good_hosts_success_after_one_bad(self):
+		"""When one host is unreachable and others succeed with no prune errors,
+		schedule-tracker still reports failure (the unreachable host counts)."""
+		module, stubs = self._get_module_and_stubs()
+
+		host_bad = MagicMock()
+		host_bad.domain = "salvare.l42.eu"
+		host_bad.getBackups.side_effect = Exception("No route to host")
+
+		host_good = MagicMock()
+		host_good.domain = "aurora.local"
+		host_good.getBackups.return_value = []
+
+		stubs["classes.host"].Host.getAll.return_value = [host_bad, host_good]
+		mock_tracker = stubs["schedule_tracker"].updateScheduleTracker
+
+		module.run()
+
+		# The run has a failure (bad host) so must emit success=False
+		failure_calls = [c for c in mock_tracker.call_args_list
+						 if c.kwargs.get("success") is False]
+		assert failure_calls, "Unreachable host must cause a failure tracker call even if other hosts succeed"
