@@ -306,3 +306,74 @@ class TestFullRun:
             "last_success marker must NOT be written when backups fail — "
             "the next cron run must retry rather than skip"
         )
+
+    def test_host_unreachable_does_not_crash_run(self, cb, tmp_path):
+        """If getVolumes() raises (e.g. SSH error), the script continues with remaining hosts."""
+        module, stubs, lock_file, last_success_file = cb
+
+        # First host: SSH error on getVolumes()
+        mock_host_bad = MagicMock()
+        mock_host_bad.domain = "salvare.l42.eu"
+        mock_host_bad.getVolumes.side_effect = Exception("SSH connection refused")
+
+        # Second host: succeeds with no volumes
+        mock_host_good = MagicMock()
+        mock_host_good.domain = "aurora.local"
+        mock_host_good.getVolumes.return_value = []
+        mock_host_good.getOneOffFiles.return_value = []
+
+        stubs["classes.host"].Host.getAll.return_value = [mock_host_bad, mock_host_good]
+        stubs["classes.repository"].Repository.getAll.return_value = []
+
+        # Must not raise
+        module.run(
+            lock_file=lock_file,
+            last_success_file=last_success_file,
+            fresh_threshold_seconds=72000,
+        )
+
+        # Good host must still have been processed
+        mock_host_good.getVolumes.assert_called_once()
+
+    def test_host_unreachable_closes_connection(self, cb, tmp_path):
+        """closeConnection() is always called on a host even when getVolumes() raises."""
+        module, stubs, lock_file, last_success_file = cb
+
+        mock_host_bad = MagicMock()
+        mock_host_bad.domain = "salvare.l42.eu"
+        mock_host_bad.getVolumes.side_effect = Exception("No route to host")
+
+        stubs["classes.host"].Host.getAll.return_value = [mock_host_bad]
+        stubs["classes.repository"].Repository.getAll.return_value = []
+
+        module.run(
+            lock_file=lock_file,
+            last_success_file=last_success_file,
+            fresh_threshold_seconds=72000,
+        )
+
+        mock_host_bad.closeConnection.assert_called_once()
+
+    def test_host_unreachable_records_failure(self, cb, tmp_path):
+        """An unreachable host is included in the failure summary sent to schedule-tracker."""
+        module, stubs, lock_file, last_success_file = cb
+
+        mock_host_bad = MagicMock()
+        mock_host_bad.domain = "salvare.l42.eu"
+        mock_host_bad.getVolumes.side_effect = Exception("No valid connections")
+
+        stubs["classes.host"].Host.getAll.return_value = [mock_host_bad]
+        stubs["classes.repository"].Repository.getAll.return_value = []
+        mock_tracker = stubs["schedule_tracker"].updateScheduleTracker
+
+        module.run(
+            lock_file=lock_file,
+            last_success_file=last_success_file,
+            fresh_threshold_seconds=72000,
+        )
+
+        failure_calls = [c for c in mock_tracker.call_args_list
+                         if c.kwargs.get("success") is False]
+        assert failure_calls, "updateScheduleTracker(success=False) must be called when a host is unreachable"
+        message = failure_calls[0].kwargs.get("message", "")
+        assert "salvare.l42.eu" in message
