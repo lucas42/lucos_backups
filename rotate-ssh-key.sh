@@ -8,7 +8,7 @@ set -e
 
 rm -f new-ssh-key*
 ssh-keygen -t ed25519 -C lucos_backups -N "" -f new-ssh-key -q <<< "y" > /dev/null
-PRIVATE_KEY=`cat new-ssh-key | sed 's/=/~/g'` # HACK: Replace padding characters with tildas because lucos_creds gets confused by equal signs
+PRIVATE_KEY=`cat new-ssh-key`
 PUBLIC_KEY=`cat new-ssh-key.pub`
 rm -f new-ssh-key*
 
