@@ -19,3 +19,4 @@ ssh -p 2202 creds.l42.eu "lucos_backups/development/SSH_PRIVATE_KEY=$PRIVATE_KEY
 ssh -p 2202 creds.l42.eu "lucos_backups/development/SSH_PUBLIC_KEY=$PUBLIC_KEY"
 
 echo "Key updated in lucos_creds"
+echo "Run ./update-authorized-keys.sh <hostname> for each backup host to distribute the new key."
