@@ -24,7 +24,8 @@ source update.env
 rm update.env
 
 echo "Saving public SSH key"
-ssh -T $HOSTNAME "echo \"$SSH_PUBLIC_KEY\" | sudo tee /home/${USERNAME}/.ssh/authorized_keys >/dev/null"
+ssh -T $HOSTNAME "sudo test -d ~${USERNAME}/.ssh" || { echo "No .ssh directory under ~${USERNAME} on $HOSTNAME — has init-host.sh been run?"; exit 1; }
+ssh -T $HOSTNAME "echo \"$SSH_PUBLIC_KEY\" | sudo tee ~${USERNAME}/.ssh/authorized_keys >/dev/null"
 
 echo "Testing login"
 HOSTONLY="${HOSTNAME##*@}"
