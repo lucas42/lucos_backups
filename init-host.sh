@@ -48,7 +48,7 @@ echo "Creating directory /srv/backups"
 ssh -T $HOSTNAME "sudo mkdir -p /srv/backups && sudo chown $USERNAME /srv/backups"
 
 echo "Testing login"
-ssh-add - <<< "${SSH_PRIVATE_KEY/\~/=}"
+ssh-add - <<< "$SSH_PRIVATE_KEY"
 ssh $USERNAME@$HOSTNAME echo "Successful Login"
 ssh-add -D
 
