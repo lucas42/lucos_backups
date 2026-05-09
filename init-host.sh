@@ -26,7 +26,7 @@ else
 fi
 
 echo "Adding $USERNAME to docker group"
-if ssh -T $HOSTNAME "command -v usermod >/dev/null 2>&1"; then
+if ssh -T $HOSTNAME "test -x /usr/sbin/usermod || test -x /sbin/usermod"; then
 	ssh -T $HOSTNAME "sudo usermod -G docker $USERNAME"
 else
 	ssh -T $HOSTNAME "sudo addgroup $USERNAME docker"
@@ -34,7 +34,7 @@ fi
 
 dailyuser=`ssh -T $HOSTNAME whoami`
 echo "Adding ${dailyuser} to ${USERNAME} group"
-if ssh -T $HOSTNAME "command -v usermod >/dev/null 2>&1"; then
+if ssh -T $HOSTNAME "test -x /usr/sbin/usermod || test -x /sbin/usermod"; then
 	ssh -T $HOSTNAME "sudo usermod -a -G ${USERNAME} ${dailyuser}"
 else
 	ssh -T $HOSTNAME "sudo addgroup ${dailyuser} ${USERNAME}"
