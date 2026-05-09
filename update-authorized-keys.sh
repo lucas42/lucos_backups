@@ -27,8 +27,9 @@ echo "Saving public SSH key"
 ssh -T $HOSTNAME "echo \"$SSH_PUBLIC_KEY\" | sudo tee /home/${USERNAME}/.ssh/authorized_keys >/dev/null"
 
 echo "Testing login"
+HOSTONLY="${HOSTNAME##*@}"
 ssh-add - <<< "$SSH_PRIVATE_KEY"
-ssh $USERNAME@$HOSTNAME echo "Successful Login"
+ssh $USERNAME@$HOSTONLY echo "Successful Login"
 ssh-add -D
 
 echo "Done"
