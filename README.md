@@ -9,8 +9,8 @@ Backs up files and tracks backups
 ## Setup
 
 The following scripts are to be run manually by a privileged user:
-* __rotate-ssh-key.sh__ - generates a new SSH public/private key pair for the backup user, stores it in lucos_creds, and automatically calls `update-authorized-keys.sh` to push the new public key to every backup host. This is the only command needed for a key rotation.
-* __update-authorized-keys.sh__ - pushes the current public key from lucos_creds to every backup host's `authorized_keys`. Called automatically by `rotate-ssh-key.sh`; run manually if a host's key gets out of sync.
+* __rotate-ssh-key.sh__ - generates a new SSH public/private key pair for the backup user and stores it in lucos_creds. After running this, use `update-authorized-keys.sh` on each backup host to distribute the new key.
+* __update-authorized-keys.sh \<hostname\>__ - pushes the current public key from lucos_creds to the given host's `authorized_keys` and verifies the new key works. Run this on each backup host after `rotate-ssh-key.sh`, or any time a host's key gets out of sync. Use `[user@]hostname` format as needed (e.g. `lucas42@aurora.local`).
 * __init-host.sh \<hostname\>__ - first-time setup for a new host: creates the `lucos-backups` user, sets group memberships, creates the `.ssh` directory, writes the initial `authorized_keys`, and creates `/srv/backups`. Run once per host, ever. **Do not re-run on existing hosts** — use `update-authorized-keys.sh` instead to refresh keys.
 * __restore-volume.sh \<volume_name\> \<archive_path\>__ - restores a Docker volume from a backup archive on a production host. Run on the host where the volume lives; see [docs/restore-runbook.md](docs/restore-runbook.md) for full instructions.
 
