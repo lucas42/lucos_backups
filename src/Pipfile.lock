@@ -368,7 +368,6 @@
                 "sha256:f5333311663ea94f75dd408665686aaf426563556bb5283554a3539177e03b8c",
                 "sha256:fdfef35d751d510fcef5252703621574364fec16418c4a1e5e1055248401054b"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.9' and python_full_version not in '3.9.0, 3.9.1'",
             "version": "==48.0.0"
         },
@@ -536,11 +535,12 @@
         },
         "paramiko": {
             "hashes": [
-                "sha256:0e20e00ac666503bf0b4eda3b6d833465a2b7aff2e2b3d79a8bba5ef144ee3b9",
-                "sha256:6a25f07b380cc9c9a88d2b920ad37167ac4667f8d9886ccebd8f90f654b5d69f"
+                "sha256:36763b5b95c2a0dcfdf1abc48e48156ee425b21efe2f0e787c2dd5a95c0e5e79",
+                "sha256:b7044611c30140d9a75261653210e2002977b71a0497ff3ba0d98d7edbf62f7c"
             ],
+            "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==4.0.0"
+            "version": "==5.0.0"
         },
         "pycparser": {
             "hashes": [
