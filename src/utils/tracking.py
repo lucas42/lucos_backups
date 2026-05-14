@@ -89,8 +89,8 @@ def fetchAllInfo():
 		latestInfo = info
 
 		updateScheduleTracker(
-			system="lucos_backups_tracking",
 			success=True,
+			job_name="tracking",
 			frequency=60*60, # 1 hour in seconds
 		)
 		print("\033[92m" + "Tracking completed successfully" + "\033[0m", flush=True)
@@ -107,8 +107,8 @@ def fetchAllInfo():
 	except Exception as error:
 		print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 		updateScheduleTracker(
-			system="lucos_backups_tracking",
 			success=False,
+			job_name="tracking",
 			message=str(error),
 			frequency=60*60, # 1 hour in seconds
 		)

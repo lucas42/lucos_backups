@@ -49,16 +49,16 @@ def fetchConfig():
 		with open('config.yaml', 'w') as config_file:
 			yaml.dump(config, config_file, default_flow_style=False)
 		updateScheduleTracker(
-			system="lucos_backups_config",
 			success=True,
+			job_name="config",
 			frequency=60*60, # 1 hour in seconds
 		)
 		print("\033[92m" + "Config fetched successfully" + "\033[0m", flush=True)
 	except Exception as error:
 		print ("\033[91m** Error ** " + str(error) + "\033[0m", flush=True)
 		updateScheduleTracker(
-			system="lucos_backups_config",
 			success=False,
+			job_name="config",
 			message=str(error),
 			frequency=60*60, # 1 hour in seconds
 		)

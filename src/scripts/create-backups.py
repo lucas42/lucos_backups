@@ -33,7 +33,7 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 		fcntl.flock(_lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 	except BlockingIOError:
 		print("No-op: previous run still in flight", flush=True)
-		updateScheduleTracker(success=True, message="No-op: previous run still in flight")
+		updateScheduleTracker(success=True, job_name="create-backups", message="No-op: previous run still in flight")
 		sys.exit(0)
 
 	# --- Skip-if-fresh check ---
@@ -43,7 +43,7 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 		age_seconds = time.time() - os.path.getmtime(last_success_file)
 		if age_seconds < fresh_threshold_seconds:
 			print("No-op: recent successful backup ({:.0f}h ago), skipping".format(age_seconds / 3600), flush=True)
-			updateScheduleTracker(success=True, message="No-op: recent successful backup")
+			updateScheduleTracker(success=True, job_name="create-backups", message="No-op: recent successful backup")
 			sys.exit(0)
 
 	print("\033[0mStarting Backups...", flush=True)
@@ -86,7 +86,7 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 	if failures:
 		summary = "Backups failed for: {}".format(", ".join(failures))
 		print("\033[91m** {} **\033[0m".format(summary), flush=True)
-		updateScheduleTracker(success=False, message=summary)
+		updateScheduleTracker(success=False, job_name="create-backups", message=summary)
 	else:
 		print("\033[92m" + "Backups Complete" + "\033[0m", flush=True)
 		if backupCount > 0:
@@ -97,7 +97,7 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 		# Write last_success marker so the next cron run can skip if this completed recently
 		with open(last_success_file, 'w') as f:
 			f.write('')
-		updateScheduleTracker(success=True)
+		updateScheduleTracker(success=True, job_name="create-backups")
 
 
 if __name__ == '__main__':
