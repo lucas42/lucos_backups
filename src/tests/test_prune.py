@@ -292,8 +292,8 @@ class TestPruneScript:
 		assert failure_calls, "updateScheduleTracker(success=False) must be called when a host is unreachable"
 		message = failure_calls[0].kwargs.get("message", "")
 		assert "salvare.l42.eu" in message
-		assert failure_calls[0].kwargs.get("job_name") == "prune", \
-			"updateScheduleTracker failure call must include job_name='prune'"
+		assert failure_calls[0].kwargs.get("job_name") == "prune-backups", \
+			"updateScheduleTracker failure call must include job_name='prune-backups'"
 
 	def test_good_hosts_success_after_one_bad(self):
 		"""When one host is unreachable and others succeed with no prune errors,
@@ -317,5 +317,5 @@ class TestPruneScript:
 		failure_calls = [c for c in mock_tracker.call_args_list
 						 if c.kwargs.get("success") is False]
 		assert failure_calls, "Unreachable host must cause a failure tracker call even if other hosts succeed"
-		assert failure_calls[0].kwargs.get("job_name") == "prune", \
-			"updateScheduleTracker failure call must include job_name='prune'"
+		assert failure_calls[0].kwargs.get("job_name") == "prune-backups", \
+			"updateScheduleTracker failure call must include job_name='prune-backups'"

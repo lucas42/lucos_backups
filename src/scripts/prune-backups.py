@@ -36,7 +36,7 @@ def run():
 	if failures:
 		summary = "Prune failed for: {}".format(", ".join(failures))
 		print("\033[91m** {} **\033[0m".format(summary), flush=True)
-		updateScheduleTracker(success=False, job_name="prune", system="lucos_backups", message=summary)
+		updateScheduleTracker(success=False, job_name="prune-backups", message=summary)
 	else:
 		print("\033[92mPruning Complete - {} backups pruned\033[0m".format(pruneCount), flush=True)
 		if pruneCount > 0:
@@ -44,7 +44,7 @@ def run():
 				type="prune-backups",
 				humanReadable="{} backups pruned".format(pruneCount),
 			)
-		updateScheduleTracker(success=True, job_name="prune", system="lucos_backups")
+		updateScheduleTracker(success=True, job_name="prune-backups")
 
 
 if __name__ == '__main__':

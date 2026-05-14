@@ -51,7 +51,6 @@ def fetchConfig():
 		updateScheduleTracker(
 			success=True,
 			job_name="config",
-			system="lucos_backups",
 			frequency=60*60, # 1 hour in seconds
 		)
 		print("\033[92m" + "Config fetched successfully" + "\033[0m", flush=True)
@@ -60,7 +59,6 @@ def fetchConfig():
 		updateScheduleTracker(
 			success=False,
 			job_name="config",
-			system="lucos_backups",
 			message=str(error),
 			frequency=60*60, # 1 hour in seconds
 		)
