@@ -106,6 +106,8 @@ class TestSkipIfFresh:
         assert call_kwargs.kwargs.get("success") is True or (
             len(call_kwargs.args) > 0 and call_kwargs.args[0] is True
         ), "updateScheduleTracker must be called with success=True on no-op"
+        assert call_kwargs.kwargs.get("job_name") == "create", \
+            "updateScheduleTracker must be called with job_name='create' on no-op"
 
     def test_fresh_marker_success_tick_includes_message(self, cb, tmp_path):
         """The no-op tracker call should include a descriptive message."""
@@ -205,6 +207,8 @@ class TestLockContention:
         mock_tracker.assert_called_once()
         call_kwargs = mock_tracker.call_args
         assert call_kwargs.kwargs.get("success") is True
+        assert call_kwargs.kwargs.get("job_name") == "create", \
+            "updateScheduleTracker must be called with job_name='create' on lock contention"
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +257,8 @@ class TestFullRun:
         success_calls = [c for c in mock_tracker.call_args_list
                          if c.kwargs.get("success") is True]
         assert success_calls, "updateScheduleTracker(success=True) must be called on a clean run"
+        assert success_calls[0].kwargs.get("job_name") == "create", \
+            "updateScheduleTracker success call must include job_name='create'"
 
     def test_failure_emits_failure_tracker_tick(self, cb, tmp_path):
         """When a backup fails, updateScheduleTracker(success=False, message=...) is called."""
@@ -280,6 +286,8 @@ class TestFullRun:
                          if c.kwargs.get("success") is False]
         assert failure_calls, "updateScheduleTracker(success=False) must be called when a backup fails"
         assert "message" in failure_calls[0].kwargs, "failure tracker call must include a message"
+        assert failure_calls[0].kwargs.get("job_name") == "create", \
+            "updateScheduleTracker failure call must include job_name='create'"
 
     def test_failure_does_not_write_last_success_marker(self, cb, tmp_path):
         """When a backup fails, the last_success marker must NOT be written —
@@ -377,3 +385,5 @@ class TestFullRun:
         assert failure_calls, "updateScheduleTracker(success=False) must be called when a host is unreachable"
         message = failure_calls[0].kwargs.get("message", "")
         assert "salvare.l42.eu" in message
+        assert failure_calls[0].kwargs.get("job_name") == "create", \
+            "updateScheduleTracker failure call must include job_name='create'"
