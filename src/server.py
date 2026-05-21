@@ -135,6 +135,13 @@ class BackupsHandler(BaseHTTPRequestHandler):
 					"techDetail": "Whether any hosts' tracking failed on the last run",
 					"ok": (len(data["hostsFailedTracking"]) == 0),
 					"debug": "Hosts which failed tracking: "+", ".join(["{}: {}".format(host.domain, err) for host, err in data["hostsFailedTracking"].items()]),
+					# When a host fails tracking, fetchAllInfo() schedules an automatic
+					# retry 5 minutes later (see RETRY_DELAY_SECONDS in utils/tracking.py).
+					# Monitoring polls every 60s, so failThreshold:5 lets the in-process
+					# retry heal transient host blips (mDNS hiccups, single-poll network
+					# flaps) before monitoring escalates. Persistent host failures still
+					# alert at ~5-6 min, when the retry also fails.
+					"failThreshold": 5,
 				},
 				"backup-without-original": {
 					"techDetail": "Whether any backups exist for volumes that are no longer present on their source host",
