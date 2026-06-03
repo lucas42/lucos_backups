@@ -63,9 +63,11 @@ class Host:
 			self.shell = GnuShell(self.connection, self.backup_root)
 
 	def closeConnection(self):
-		self.connection.close()
-		if self.gateway:
-			self.gateway.close()
+		try:
+			self.connection.close()
+		finally:
+			if self.gateway:
+				self.gateway.close()
 
 	def getVolumes(self):
 		if self.is_storage_only:
