@@ -555,3 +555,84 @@ class TestHostCanReachExternalServices:
 		"""When configy sends can_reach_external_services=true it passes through."""
 		host = self._make_host_with_config(True)
 		assert host.can_reach_external_services is True
+
+
+class TestCloseConnectionGateway:
+	"""Regression tests for the try/finally fix in closeConnection() (#293).
+
+	Before the fix, if self.connection.close() raised, self.gateway.close()
+	would never be called, leaving the gateway transport open.  The try/finally
+	guarantees the gateway is closed regardless.
+	"""
+
+	FAKE_HOSTS_CONFIG = {
+		"aurora": {
+			"domain": "aurora.local",
+			"ssh_gateway": "xwing",
+			"is_storage_only": True,
+			"shell_flavour": "busybox",
+			"backup_root": "/backups/",
+			"can_reach_external_services": False,
+		},
+		"xwing": {
+			"domain": "xwing.s.l42.eu",
+			"can_reach_external_services": True,
+		},
+		"avalon": {
+			"domain": "avalon.s.l42.eu",
+			"ssh_gateway": None,
+			"can_reach_external_services": True,
+		},
+	}
+
+	def setup_method(self):
+		sys.modules.setdefault("utils", MagicMock())
+		sys.modules["utils.config"] = MagicMock()
+
+		fake_fabric = MagicMock()
+		fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+		sys.modules["fabric"] = fake_fabric
+
+		sys.modules.setdefault("invoke", MagicMock())
+
+		import importlib
+		import classes.host
+		importlib.reload(classes.host)
+
+		self.host_patcher = patch("classes.host.getHostsConfig", return_value=self.FAKE_HOSTS_CONFIG)
+		self.host_patcher.start()
+
+		from classes.host import Host
+		self.aurora = Host("aurora")  # has gateway
+		self.avalon = Host("avalon")  # no gateway
+
+	def teardown_method(self):
+		self.host_patcher.stop()
+		sys.modules.pop("utils.config", None)
+		sys.modules.pop("utils", None)
+		sys.modules.pop("fabric", None)
+		sys.modules.pop("invoke", None)
+		sys.modules.pop("classes.host", None)
+
+	def test_gateway_closed_when_connection_close_succeeds(self):
+		"""gateway.close() is called during normal closeConnection()."""
+		self.aurora.closeConnection()
+		self.aurora.gateway.close.assert_called_once()
+
+	def test_gateway_closed_when_connection_close_raises(self):
+		"""gateway.close() must still be called even if connection.close() raises.
+
+		Regression guard for #293: without try/finally, a raise from
+		connection.close() would leave the gateway transport open indefinitely."""
+		self.aurora.connection.close.side_effect = Exception("paramiko transport error")
+		try:
+			self.aurora.closeConnection()
+		except Exception:
+			pass  # expected — we only care that gateway.close() was still called
+		self.aurora.gateway.close.assert_called_once()
+
+	def test_no_gateway_close_when_no_gateway(self):
+		"""closeConnection() on a direct-connection host closes only the connection."""
+		self.avalon.closeConnection()
+		self.avalon.connection.close.assert_called_once()
+		# gateway is None — assert no AttributeError was raised (no .close() attempted)
