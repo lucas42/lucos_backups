@@ -36,7 +36,7 @@ class Host:
 
 		if self.ssh_gateway:
 			self.ssh_gateway_domain = getHostsConfig()[self.ssh_gateway]["domain"]
-			gateway = fabric.Connection(
+			self.gateway = fabric.Connection(
 				host=self.ssh_gateway_domain,
 				user="lucos-backups",
 				forward_agent=True,
@@ -45,10 +45,11 @@ class Host:
 				host=self.domain,
 				user="lucos-backups",
 				forward_agent=True,
-				gateway=gateway,
+				gateway=self.gateway,
 			)
 		else:
 			self.ssh_gateway_domain = None
+			self.gateway = None
 			self.connection = fabric.Connection(
 				host=self.domain,
 				user="lucos-backups",
@@ -63,6 +64,8 @@ class Host:
 
 	def closeConnection(self):
 		self.connection.close()
+		if self.gateway:
+			self.gateway.close()
 
 	def getVolumes(self):
 		if self.is_storage_only:
