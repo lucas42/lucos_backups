@@ -40,6 +40,8 @@ def fetchAllInfo():
 				info["backups"] += info["hosts"][host.name]["backups"]
 			except Exception as error:
 				info["hostsFailedTracking"][host] = str(error)
+			finally:
+				host.closeConnection()
 		info["repositories"] = [repo.getData() for repo in Repository.getAll()]
 		for volume in info["volumes"]:
 			if not volume["known"]:
