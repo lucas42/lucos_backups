@@ -204,6 +204,32 @@ class TestRepositoryBackup:
             assert host.connection.run.call_count == 2, \
                 "Each host with can_reach_external_services=True should receive mkdir + wget"
 
+    def test_backup_wget_has_timeout_flags(self):
+        """The wget command must include --timeout and --tries so a wedged codeload
+        connection cannot hold the flock forever and silently halt all backups.
+
+        Regression guard for #302: previously wget ran with no --timeout, so a
+        half-open TCP to GitHub codeload would block indefinitely, holding the
+        exclusive lock and silently preventing all subsequent backup runs for up
+        to 72 hours before any alert fired."""
+        avalon = make_host("avalon", "/srv/backups/")
+        repo = self._make_repo_with_hosts([avalon])
+
+        repo.backup()
+
+        wget_call = avalon.connection.run.call_args_list[1]
+        wget_cmd = wget_call[0][0]
+        wget_kwargs = wget_call[1]
+
+        assert "--timeout=" in wget_cmd, \
+            "wget command must include --timeout=N to bound per-connection stall time"
+        assert "--tries=" in wget_cmd, \
+            "wget command must include --tries=N to limit retries"
+        assert "timeout" in wget_kwargs, \
+            "connection.run must be given a timeout= kwarg as a hard backstop"
+        assert wget_kwargs["timeout"] >= 60, \
+            "connection.run timeout must be at least 60 seconds (large repos take time)"
+
 
 class TestRepositoryGetAll:
     """Repository.getAll() must filter out empty repositories (size == 0).
