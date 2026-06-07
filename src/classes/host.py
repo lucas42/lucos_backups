@@ -120,6 +120,7 @@ class Host:
 		self.connection.run(
 			'scp {} "{}" {}:"{}"'.format(ssh_args, source, target_host.domain, dest),
 			hide=True,
+			timeout=600,
 		)
 
 	def copyFileTo(self, source_path, target_host, target_path):
