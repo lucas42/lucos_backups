@@ -203,3 +203,92 @@ class TestRepositoryBackup:
         for host in (avalon, salvare):
             assert host.connection.run.call_count == 2, \
                 "Each host with can_reach_external_services=True should receive mkdir + wget"
+
+
+class TestRepositoryGetAll:
+    """Repository.getAll() must filter out empty repositories (size == 0).
+
+    Empty repos have no commits to archive: GitHub's codeload returns a
+    ref-less URL that wget exits with code 8, causing the whole backup run to
+    be marked failed.  Filtering on size == 0 at the getAll() stage is the
+    cleanest gate (Refs #298)."""
+
+    def _make_rawinfo(self, name, size):
+        return {
+            'name': name,
+            'size': size,
+            'html_url': 'https://github.com/lucas42/' + name,
+            'archived': False,
+            'fork': False,
+            'url': 'https://api.github.com/repos/lucas42/' + name,
+        }
+
+    def setup_method(self):
+        os.environ.setdefault("GITHUB_KEY", "test_key_for_unit_tests")
+
+        fake_host_module = type(sys)("classes.host")
+        fake_host_module.Host = type("Host", (), {})
+        sys.modules["classes.host"] = fake_host_module
+
+        self._fake_requests = type(sys)("requests")
+        sys.modules["requests"] = self._fake_requests
+
+        import importlib
+        import classes.repository
+        importlib.reload(classes.repository)
+        from classes.repository import Repository
+        self.Repository = Repository
+
+    def teardown_method(self):
+        sys.modules.pop("classes.host", None)
+        sys.modules.pop("requests", None)
+        sys.modules.pop("classes.repository", None)
+
+    def test_getall_excludes_empty_repos(self):
+        """Repos with size == 0 must not appear in the list returned by getAll()."""
+        api_data = [
+            self._make_rawinfo("lucos_photos", 12345),
+            self._make_rawinfo("lucos_dns_secondary", 0),
+            self._make_rawinfo("lucos_media", 9876),
+        ]
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_data
+        self._fake_requests.get = lambda *a, **kw: mock_resp
+
+        repos = self.Repository.getAll()
+
+        names = [r.name for r in repos]
+        assert "lucos_dns_secondary" not in names, \
+            "getAll() must skip empty repos (size == 0) to avoid failed wget exit code 8"
+        assert "lucos_photos" in names
+        assert "lucos_media" in names
+        assert len(repos) == 2
+
+    def test_getall_keeps_nonempty_repos(self):
+        """Repos with size > 0 must all be included in the result."""
+        api_data = [
+            self._make_rawinfo("lucos_a", 1),
+            self._make_rawinfo("lucos_b", 100000),
+        ]
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_data
+        self._fake_requests.get = lambda *a, **kw: mock_resp
+
+        repos = self.Repository.getAll()
+
+        assert len(repos) == 2
+        assert {r.name for r in repos} == {"lucos_a", "lucos_b"}
+
+    def test_getall_all_empty_returns_empty_list(self):
+        """If all repos are empty, getAll() should return an empty list."""
+        api_data = [
+            self._make_rawinfo("lucos_empty_1", 0),
+            self._make_rawinfo("lucos_empty_2", 0),
+        ]
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = api_data
+        self._fake_requests.get = lambda *a, **kw: mock_resp
+
+        repos = self.Repository.getAll()
+
+        assert repos == []
