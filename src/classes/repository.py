@@ -52,12 +52,14 @@ class Repository:
 			# be conflated with external-network reachability (#228).
 			if not host.can_reach_external_services:
 				continue
-			directory = "{backup_root}external/github/repository".format(backup_root=host.backup_root)
-			archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
-			print("Archiving repo {name} to {host} at {archivePath}".format(name=self.name, host=host.name, archivePath=archivePath), flush=True)
-			host.connection.run("mkdir -p {directory}".format(directory=directory), hide=True, timeout=3)
-			host.connection.run("wget --timeout=60 --tries=2 \"{url}\" -O \"{archivePath}\"".format(url=downloadUrl, archivePath=archivePath), hide=True, timeout=600)
-			host.closeConnection()
+			try:
+				directory = "{backup_root}external/github/repository".format(backup_root=host.backup_root)
+				archivePath = "{directory}/{repo_name}.{date}.tar.gz".format(directory=directory, repo_name=self.name, date=date)
+				print("Archiving repo {name} to {host} at {archivePath}".format(name=self.name, host=host.name, archivePath=archivePath), flush=True)
+				host.connection.run("mkdir -p {directory}".format(directory=directory), hide=True, timeout=3)
+				host.connection.run("wget --timeout=60 --tries=2 \"{url}\" -O \"{archivePath}\"".format(url=downloadUrl, archivePath=archivePath), hide=True, timeout=600)
+			finally:
+				host.closeConnection()
 		return 1
 
 	def getData(self):

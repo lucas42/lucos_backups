@@ -230,6 +230,26 @@ class TestRepositoryBackup:
         assert wget_kwargs["timeout"] >= 60, \
             "connection.run timeout must be at least 60 seconds (large repos take time)"
 
+    def test_backup_closes_connection_even_when_wget_raises(self):
+        """closeConnection() must be called in a finally block so that a timeout
+        or any other wget exception doesn't leak the SSH connection.
+
+        Regression guard for the connection-leak introduced when the timeout fix
+        (#302) made the exception path in backup() reachable for the first time:
+        previously wget never raised (no timeout), so the missing try/finally was
+        invisible.  Now it's real — a timeout exception must still close the
+        connection."""
+        avalon = make_host("avalon", "/srv/backups/")
+        # Make wget raise — simulates the exact case the timeout fix enables
+        avalon.connection.run.side_effect = [None, Exception("connection timeout")]
+        repo = self._make_repo_with_hosts([avalon])
+
+        with pytest.raises(Exception, match="connection timeout"):
+            repo.backup()
+
+        assert avalon.closeConnection.call_count == 1, \
+            "closeConnection must be called exactly once even when wget raises"
+
 
 class TestRepositoryGetAll:
     """Repository.getAll() must filter out empty repositories (size == 0).
