@@ -69,7 +69,8 @@ class Repository:
 			"Authorization": "Bearer "+GITHUB_KEY
 		})
 		resp.raise_for_status()
-		repositories = [Repository(rawinfo) for rawinfo in resp.json()]
-		if (len(repositories) >= 100):
+		all_rawinfo = resp.json()
+		repositories = [Repository(rawinfo) for rawinfo in all_rawinfo if rawinfo['size'] > 0]
+		if (len(all_rawinfo) >= 100):
 			print("\033[91m** Error ** Maximum repositories available in one request.  Need pagination to retreive more\033[0m", flush=True)
 		return repositories
