@@ -70,7 +70,7 @@ class Volume:
 			volume_name=self.name,
 			archive_directory=archiveDirectory,
 			archive_path=archivePath,
-		))
+		), timeout=600)
 		return (archivePath, date)
 
 	# Backs up the volume to all available hosts (except the one the volume is on)

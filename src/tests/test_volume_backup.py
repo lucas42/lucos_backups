@@ -61,6 +61,72 @@ def make_target_host(name, domain):
     return h
 
 
+class TestArchiveLocally:
+
+    def setup_method(self):
+        fake_config = MagicMock()
+        fake_config.getVolumesConfig = MagicMock(return_value=FAKE_VOLUMES_CONFIG)
+        fake_config.getHostsConfig = MagicMock(return_value=FAKE_HOSTS_CONFIG)
+        sys.modules.setdefault("utils", MagicMock())
+        sys.modules["utils.config"] = fake_config
+
+        import importlib
+        import classes.volume
+        importlib.reload(classes.volume)
+
+        self.vol_patcher = patch("classes.volume.getVolumesConfig", return_value=FAKE_VOLUMES_CONFIG)
+        self.hosts_patcher = patch("classes.volume.getHostsConfig", return_value=FAKE_HOSTS_CONFIG)
+        self.vol_patcher.start()
+        self.hosts_patcher.start()
+
+        from classes.volume import Volume
+        self.Volume = Volume
+
+    def teardown_method(self):
+        self.vol_patcher.stop()
+        self.hosts_patcher.stop()
+        sys.modules.pop("utils.config", None)
+
+    def _make_volume(self, volume_name="lucos_notes_data"):
+        raw = make_raw_json(volume_name, labels="com.docker.compose.project=lucos_notes")
+        host = make_host("avalon")
+        host.connection = MagicMock()
+        host.backup_root = "/srv/backups/"
+        return self.Volume(host, raw)
+
+    def test_archive_locally_calls_docker_run_with_timeout(self):
+        """docker run tar command must be issued with timeout=600."""
+        vol = self._make_volume()
+        vol.archiveLocally()
+
+        # Two connection.run calls: mkdir first, then docker run
+        assert vol.host.connection.run.call_count == 2
+        docker_run_call = vol.host.connection.run.call_args_list[1]
+        cmd = docker_run_call[0][0]
+        assert "docker run" in cmd
+        assert docker_run_call[1].get("timeout") == 600
+
+    def test_archive_locally_mkdir_has_timeout(self):
+        """mkdir call must retain its existing timeout=3."""
+        vol = self._make_volume()
+        vol.archiveLocally()
+
+        mkdir_call = vol.host.connection.run.call_args_list[0]
+        assert "mkdir" in mkdir_call[0][0]
+        assert mkdir_call[1].get("timeout") == 3
+
+    def test_archive_locally_returns_archive_path_and_date(self):
+        """archiveLocally must return a tuple of (archive_path, date)."""
+        vol = self._make_volume()
+        (archive_path, date) = vol.archiveLocally()
+
+        assert "lucos_notes_data" in archive_path
+        assert archive_path.endswith(".tar.gz")
+        # date should be YYYY-MM-DD
+        import re
+        assert re.match(r"\d{4}-\d{2}-\d{2}", date)
+
+
 class TestShouldBackup:
 
     def setup_method(self):
