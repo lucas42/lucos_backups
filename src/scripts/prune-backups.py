@@ -43,6 +43,7 @@ def run():
 			updateLoganne(
 				type="prune-backups",
 				humanReadable="{} backups pruned".format(pruneCount),
+				level="routine",
 			)
 		updateScheduleTracker(success=True, job_name="prune-backups")
 
