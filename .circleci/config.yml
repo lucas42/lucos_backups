@@ -9,7 +9,7 @@ jobs:
       - checkout
       - run:
           name: Install dependencies
-          command: pip install pyyaml pytest
+          command: pip install pyyaml pytest "lucos-loganne-pythonclient>=2.0.0"
       - run:
           name: Run tests
           command: cd src && python3 -m pytest tests/

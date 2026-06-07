@@ -93,6 +93,7 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 			updateLoganne(
 				type="backups",
 				humanReadable="{} archives successfully backed up".format(backupCount),
+				level="routine",
 			)
 		# Write last_success marker so the next cron run can skip if this completed recently
 		with open(last_success_file, 'w') as f:
