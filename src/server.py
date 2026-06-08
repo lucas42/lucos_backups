@@ -35,6 +35,9 @@ def format_backup_without_original(bwo_key, all_backups):
 	})
 	return "{} (copies on: {})".format(bwo_key, ", ".join(stored_hosts))
 
+MIN_REFRESH_INTERVAL_SECONDS = 60  # Minimum seconds between refreshes (prevents SSH fan-out spam)
+_last_config_refresh = None  # Updated after each successful /refresh-config POST
+
 templateEnv = Environment(loader=FileSystemLoader("templates/"), autoescape=select_autoescape())
 templateEnv.filters["london_time"] = toLondonTime
 templateEnv.filters["break_underscores"] = breakUnderscores
@@ -243,6 +246,16 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 		try:
+			info = getAllInfo()
+			age = (datetime.datetime.now(datetime.timezone.utc) - info["update_time"]).total_seconds()
+			if age < MIN_REFRESH_INTERVAL_SECONDS:
+				self.send_response(429)
+				self.send_header("Retry-After", str(int(MIN_REFRESH_INTERVAL_SECONDS - age)))
+				self.end_headers()
+				return
+		except TrackingNotReadyError:
+			pass  # No previous tracking data — allow the first refresh
+		try:
 			fetchAllInfo()
 			self.send_response(303)
 			self.send_header("Location", "/")
@@ -253,13 +266,22 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.end_headers()
 			self.wfile.write(bytes("Error refreshing tracking: "+str(error)+"\n\n", "utf-8"))
 	def refreshConfigController(self):
+		global _last_config_refresh
 		if self.method != "POST":
 			self.send_response(405)
 			self.send_header("Allow", "POST")
 			self.end_headers()
 			return
+		if _last_config_refresh is not None:
+			age = (datetime.datetime.now(datetime.timezone.utc) - _last_config_refresh).total_seconds()
+			if age < MIN_REFRESH_INTERVAL_SECONDS:
+				self.send_response(429)
+				self.send_header("Retry-After", str(int(MIN_REFRESH_INTERVAL_SECONDS - age)))
+				self.end_headers()
+				return
 		try:
 			fetchConfig()
+			_last_config_refresh = datetime.datetime.now(datetime.timezone.utc)
 			self.send_response(303)
 			self.send_header("Location", "/")
 			self.end_headers()
