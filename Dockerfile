@@ -5,7 +5,7 @@ ENV VERSION=$VERSION
 
 WORKDIR /usr/src/app
 
-RUN apk add sed curl openssh-client
+RUN apk add sed curl openssh-client rsync
 RUN pip install pipenv
 
 COPY src/backups.cron .
