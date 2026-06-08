@@ -643,12 +643,11 @@ class TestCloseConnectionGateway:
 # ---------------------------------------------------------------------------
 
 class TestCopyTo:
-	"""Tests for Host.copyTo() — verifies rsync is used and gateway routing works.
+	"""Tests for Host.copyTo() — verifies scp is used and gateway routing works.
 
-	copyTo() was switched from scp to rsync to handle large volumes (e.g. the
-	6.6 GB lucos_photos_photos volume) that exceed scp's hard wall-clock timeout.
-	rsync uses an idle I/O timeout (--timeout) rather than a total-time limit,
-	so large in-progress transfers are not killed arbitrarily.
+	copyTo() uses scp (from openssh-client, present on all hosts) with a raised
+	wall-clock timeout (7200s / 2 hours) so large volumes like the 6.6 GB
+	lucos_photos_photos don't get killed before the transfer completes.
 	"""
 
 	FAKE_HOSTS_CONFIG = {
@@ -698,35 +697,35 @@ class TestCopyTo:
 		sys.modules.pop("invoke", None)
 		sys.modules.pop("classes.host", None)
 
-	def test_uses_rsync_not_scp(self):
-		"""copyTo must issue an rsync command — scp is no longer used."""
+	def test_uses_scp_not_rsync(self):
+		"""copyTo must issue an scp command — rsync is not installed on all hosts."""
 		self.avalon.copyTo(self.aurora, "/src/file.tar.gz", "/dest/")
 		cmd = self.avalon.connection.run.call_args[0][0]
-		assert "rsync" in cmd
-		assert "scp" not in cmd
+		assert cmd.startswith("scp ")
+		assert "rsync" not in cmd
 
-	def test_no_hard_timeout_on_connection_run(self):
-		"""copyTo must pass timeout=None — rsync's --timeout handles idle, not wall-clock."""
+	def test_timeout_raised_above_original_600(self):
+		"""copyTo timeout must exceed the original 600s so large volumes can complete."""
 		self.avalon.copyTo(self.aurora, "/src/file.tar.gz", "/dest/")
 		timeout = self.avalon.connection.run.call_args[1].get("timeout")
-		assert timeout is None
+		assert timeout is not None
+		assert timeout > 600
 
-	def test_proxyjump_passed_via_e_flag(self):
-		"""ProxyJump for gateway-routed targets must appear inside rsync's -e SSH args."""
+	def test_proxyjump_in_ssh_args_for_gateway_target(self):
+		"""ProxyJump for gateway-routed targets must appear in the scp SSH option flags."""
 		self.avalon.copyTo(self.aurora, "/src/file.tar.gz", "/dest/")
 		cmd = self.avalon.connection.run.call_args[0][0]
-		assert "-e" in cmd
 		assert "ProxyJump" in cmd
 		assert "xwing.s.l42.eu" in cmd
 
 	def test_no_proxyjump_for_direct_target(self):
-		"""No ProxyJump in the -e flag when the target has no gateway."""
+		"""No ProxyJump when the target has no gateway."""
 		self.avalon.copyTo(self.avalon, "/src/file.tar.gz", "/dest/")
 		cmd = self.avalon.connection.run.call_args[0][0]
 		assert "ProxyJump" not in cmd
 
 	def test_source_and_dest_in_command(self):
-		"""Source path and target domain plus dest path must all appear in the rsync command."""
+		"""Source path, target domain, and dest path must all appear in the scp command."""
 		self.avalon.copyTo(self.aurora, "/srv/backups/file.tar.gz", "/backups/host/avalon/volume/")
 		cmd = self.avalon.connection.run.call_args[0][0]
 		assert "/srv/backups/file.tar.gz" in cmd
