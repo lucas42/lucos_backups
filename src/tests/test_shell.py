@@ -636,3 +636,99 @@ class TestCloseConnectionGateway:
 		self.avalon.closeConnection()
 		self.avalon.connection.close.assert_called_once()
 		# gateway is None — assert no AttributeError was raised (no .close() attempted)
+
+
+# ---------------------------------------------------------------------------
+# Host.copyTo() — rsync-based file copy
+# ---------------------------------------------------------------------------
+
+class TestCopyTo:
+	"""Tests for Host.copyTo() — verifies rsync is used and gateway routing works.
+
+	copyTo() was switched from scp to rsync to handle large volumes (e.g. the
+	6.6 GB lucos_photos_photos volume) that exceed scp's hard wall-clock timeout.
+	rsync uses an idle I/O timeout (--timeout) rather than a total-time limit,
+	so large in-progress transfers are not killed arbitrarily.
+	"""
+
+	FAKE_HOSTS_CONFIG = {
+		"avalon": {
+			"domain": "avalon.s.l42.eu",
+			"can_reach_external_services": True,
+		},
+		"aurora": {
+			"domain": "aurora.local",
+			"ssh_gateway": "xwing",
+			"is_storage_only": True,
+			"shell_flavour": "busybox",
+			"backup_root": "/backups/",
+			"can_reach_external_services": False,
+		},
+		"xwing": {
+			"domain": "xwing.s.l42.eu",
+			"can_reach_external_services": True,
+		},
+	}
+
+	def setup_method(self):
+		sys.modules.setdefault("utils", MagicMock())
+		sys.modules["utils.config"] = MagicMock()
+
+		fake_fabric = MagicMock()
+		fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+		sys.modules["fabric"] = fake_fabric
+		sys.modules.setdefault("invoke", MagicMock())
+
+		import importlib
+		import classes.host
+		importlib.reload(classes.host)
+
+		self.host_patcher = patch("classes.host.getHostsConfig", return_value=self.FAKE_HOSTS_CONFIG)
+		self.host_patcher.start()
+
+		from classes.host import Host
+		self.avalon = Host("avalon")
+		self.aurora = Host("aurora")
+
+	def teardown_method(self):
+		self.host_patcher.stop()
+		sys.modules.pop("utils.config", None)
+		sys.modules.pop("utils", None)
+		sys.modules.pop("fabric", None)
+		sys.modules.pop("invoke", None)
+		sys.modules.pop("classes.host", None)
+
+	def test_uses_rsync_not_scp(self):
+		"""copyTo must issue an rsync command — scp is no longer used."""
+		self.avalon.copyTo(self.aurora, "/src/file.tar.gz", "/dest/")
+		cmd = self.avalon.connection.run.call_args[0][0]
+		assert "rsync" in cmd
+		assert "scp" not in cmd
+
+	def test_no_hard_timeout_on_connection_run(self):
+		"""copyTo must pass timeout=None — rsync's --timeout handles idle, not wall-clock."""
+		self.avalon.copyTo(self.aurora, "/src/file.tar.gz", "/dest/")
+		timeout = self.avalon.connection.run.call_args[1].get("timeout")
+		assert timeout is None
+
+	def test_proxyjump_passed_via_e_flag(self):
+		"""ProxyJump for gateway-routed targets must appear inside rsync's -e SSH args."""
+		self.avalon.copyTo(self.aurora, "/src/file.tar.gz", "/dest/")
+		cmd = self.avalon.connection.run.call_args[0][0]
+		assert "-e" in cmd
+		assert "ProxyJump" in cmd
+		assert "xwing.s.l42.eu" in cmd
+
+	def test_no_proxyjump_for_direct_target(self):
+		"""No ProxyJump in the -e flag when the target has no gateway."""
+		self.avalon.copyTo(self.avalon, "/src/file.tar.gz", "/dest/")
+		cmd = self.avalon.connection.run.call_args[0][0]
+		assert "ProxyJump" not in cmd
+
+	def test_source_and_dest_in_command(self):
+		"""Source path and target domain plus dest path must all appear in the rsync command."""
+		self.avalon.copyTo(self.aurora, "/srv/backups/file.tar.gz", "/backups/host/avalon/volume/")
+		cmd = self.avalon.connection.run.call_args[0][0]
+		assert "/srv/backups/file.tar.gz" in cmd
+		assert "aurora.local" in cmd
+		assert "/backups/host/avalon/volume/" in cmd

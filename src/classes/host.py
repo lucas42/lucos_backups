@@ -115,12 +115,20 @@ class Host:
 		)
 
 	def copyTo(self, target_host, source, dest):
-		'''Copy a file to target_host via SCP, routing through a gateway if configured.'''
+		'''Copy a file to target_host via rsync over SSH, routing through a gateway if configured.
+		rsync --timeout sets an idle I/O timeout (not a wall-clock limit), so large files are
+		not killed mid-transfer as long as bytes are flowing.  --partial keeps a partially
+		transferred file so interrupted runs can resume on retry.'''
 		ssh_args = ' '.join(self._outbound_ssh_args(target_host))
 		self.connection.run(
-			'scp {} "{}" {}:"{}"'.format(ssh_args, source, target_host.domain, dest),
+			"rsync -az --partial --timeout=300 -e 'ssh {ssh_args}' \"{source}\" {domain}:\"{dest}\"".format(
+				ssh_args=ssh_args,
+				source=source,
+				domain=target_host.domain,
+				dest=dest,
+			),
 			hide=True,
-			timeout=600,
+			timeout=None,
 		)
 
 	def copyFileTo(self, source_path, target_host, target_path):
