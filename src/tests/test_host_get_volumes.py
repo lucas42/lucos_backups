@@ -16,19 +16,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 
-def _make_host_instance(domain="avalon.s.l42.eu", is_storage_only=False):
-    """Build a Host-like object without calling __init__ (avoids fabric/SSH setup)."""
-    # Import after stubbing to avoid module-level network calls.
-    from classes.host import Host
-    host = Host.__new__(Host)
-    host.name = "avalon"
-    host.domain = domain
-    host.is_storage_only = is_storage_only
-
-    # Mock the fabric connection so connection.run() can be controlled per-test.
-    host.connection = MagicMock()
-    return host
-
 
 GOOD_RAW = '{"Name":"lucos_photos_photos","Mountpoint":"/var/lib/docker/volumes/lucos_photos_photos/_data","Labels":"com.docker.compose.project=lucos_photos"}'
 BAD_RAW  = '{"Name":"lucos_dns_configy-sync-cache","Mountpoint":"/var/lib/docker/volumes/cache/_data","Labels":"com.docker.compose.project=lucos_dns"}'
