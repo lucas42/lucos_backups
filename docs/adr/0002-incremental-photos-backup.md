@@ -1,7 +1,7 @@
 # ADR-0002: Incremental backups for large immutable media volumes (photos)
 
 **Date:** 2026-06-09
-**Status:** Proposed — awaiting lucas42 ratification. The aurora-viability analysis lucas42 asked to settle before approval is **complete** (rsync verified present at the real backup path, §3), so this records a **single unconditional decision**, not an "if-this-then-that" fork.
+**Status:** Accepted (2026-06-09). Ratified by lucas42 on merge of lucas42/lucos_backups#319. The aurora-viability analysis lucas42 asked to settle before approval was **complete** at ratification (rsync verified present at the real backup path, §3), so this records a **single unconditional decision**, not an "if-this-then-that" fork.
 **Discussion:** https://github.com/lucas42/lucos_backups/issues/318
 **Forcing function:** https://github.com/lucas42/lucos_photos/issues/424 (Google Photos import ~13×'s the `photos` volume)
 **Throughput data point:** https://github.com/lucas42/lucos_backups/issues/309 (closed copy-timeout incident)
@@ -90,7 +90,7 @@ This becomes a **per-volume opt-in**, not the estate default. Add a `backup_stra
 
 > **C3 framing correction (per architect review):** encryption at rest does **not** mitigate the ADR-0001 ransomware gap. That gap is about *availability/geographic diversity* (avalon is the only off-premises copy), not confidentiality — DeadBolt-class ransomware that encrypts the QNAP destroys a restic repo exactly as it destroys a plaintext snapshot tree. The one axis where restic genuinely helps *availability* is **append-only destination access**; encryption only buys *confidentiality* (who can read a stolen disk), a genuine but lesser concern for a LAN-only NAS.
 
-**What lucas42 is ratifying** is a single decision, with no conditional branches: rsync `--link-dest` hardlink snapshots; source-side rsync **delivered in a versioned container image** (nothing installed on the avalon host, per C1 and the soft-avoid on host tooling); opted in **per-volume via a lucos_configy `backup_strategy` field** (§2), as a generic reusable feature for which `lucos_photos_photos` is simply the first user.
+**What lucas42 ratified** is a single decision, with no conditional branches: rsync `--link-dest` hardlink snapshots; source-side rsync **delivered in a versioned container image** (nothing installed on the avalon host, per C1 and the soft-avoid on host tooling); opted in **per-volume via a lucos_configy `backup_strategy` field** (§2), as a generic reusable feature for which `lucos_photos_photos` is simply the first user.
 
 ### 4. Off-cron seed staging (C5) — capability here, planning owned by the #424 migration
 
@@ -119,7 +119,7 @@ Per lucas42's direction, the **planning and execution** of the actual ~85GB phot
 
 ### Follow-up actions
 
-- **Step zero (aurora viability): ✅ DONE 2026-06-09.** Verified aurora has rsync 3.0.7 and a hardlink-capable local FS at the real backup-root path `/share/backups/` (`/dev/md0`, not an NFS/SMB mount), and that rsync works over the ProxyJump path (see §3). The mechanism is confirmed viable on rsync. This was the gate lucas42 asked to clear before approval; it has passed, so the implementation PR may proceed on rsync `--link-dest` once lucas42 ratifies.
+- **Step zero (aurora viability): ✅ DONE 2026-06-09.** Verified aurora has rsync 3.0.7 and a hardlink-capable local FS at the real backup-root path `/share/backups/` (`/dev/md0`, not an NFS/SMB mount), and that rsync works over the ProxyJump path (see §3). The mechanism is confirmed viable on rsync. This was the gate lucas42 asked to clear before approval; it has passed, and lucas42 has now ratified, so the implementation PR may proceed on rsync `--link-dest`.
 - **Integrity sweep (new, from the shared-inode trade above):** add a periodic checksum sweep over the aurora snapshots (e.g. compare against a manifest, or `rsync -c` dry-run from source) to detect bit-rot that hardlink snapshots cannot self-heal and have no `restic check` equivalent for. Raise as its own issue; calibrate cadence to cost — this is the price of choosing browse-and-`cp` restore over restic's built-in verification.
 - **lucos_configy:** add `backup_strategy: incremental` to `lucos_photos_photos`; schema default `full-snapshot` for all others.
 - **lucos_backups implementation (separate PR, post-sign-off):** container image carrying rsync; `incremental` path in `Volume` (`--link-dest` snapshot rotation, `.partial`→rename atomic publish); snapshot-aware pruning; off-cron `--seed` path; restore runbook.
