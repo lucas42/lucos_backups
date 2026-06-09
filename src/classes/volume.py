@@ -37,6 +37,9 @@ class Volume:
 			raise Exception("No Docker Compose project label on volume "+self.name)
 		project = labels['com.docker.compose.project']
 
+		if effort_id not in effort_labels:
+			print("\033[93m** Warn ** Unknown recreate_effort '{}' for volume {} — falling back to 'unknown'\033[0m".format(effort_id, self.name), flush=True)
+			effort_id = "unknown"
 		self.effort = {
 			'id': effort_id,
 			'label': effort_labels[effort_id],
