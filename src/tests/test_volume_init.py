@@ -124,3 +124,40 @@ class TestVolumeInit:
             self.Volume(host, raw)
 
         assert "lucos_photos_photos" in str(exc_info.value)
+
+    def test_unknown_effort_id_falls_back_to_unknown(self):
+        """An invalid recreate_effort value in config falls back to 'unknown' instead of crashing."""
+        config_with_bad_effort = {
+            "lucos_dns_configy-sync-cache": {
+                "description": "DNS configy sync cache",
+                "recreate_effort": "low",  # invalid — 'low' is not in effort_labels.yaml
+            }
+        }
+        with patch("classes.volume.getVolumesConfig", return_value=config_with_bad_effort):
+            labels = "com.docker.compose.project=lucos_dns"
+            raw = make_raw_json("lucos_dns_configy-sync-cache", labels=labels)
+            host = make_host("avalon")
+
+            vol = self.Volume(host, raw)
+
+        assert vol.data["known"] is True
+        assert vol.effort["id"] == "unknown"
+        assert vol.effort["label"] == "Unknown Effort"
+
+    def test_unknown_effort_id_prints_warning(self, capsys):
+        """An invalid recreate_effort value prints a warning to stdout."""
+        config_with_bad_effort = {
+            "lucos_dns_configy-sync-cache": {
+                "description": "DNS configy sync cache",
+                "recreate_effort": "low",
+            }
+        }
+        with patch("classes.volume.getVolumesConfig", return_value=config_with_bad_effort):
+            labels = "com.docker.compose.project=lucos_dns"
+            raw = make_raw_json("lucos_dns_configy-sync-cache", labels=labels)
+            host = make_host("avalon")
+            self.Volume(host, raw)
+
+        captured = capsys.readouterr()
+        assert "low" in captured.out
+        assert "lucos_dns_configy-sync-cache" in captured.out

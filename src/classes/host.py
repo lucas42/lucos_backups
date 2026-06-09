@@ -75,7 +75,10 @@ class Host:
 		raw_volumes = self.connection.run('docker volume ls --format json', hide=True, timeout=10).stdout.splitlines()
 		volumes = []
 		for raw_volume in raw_volumes:
-			volumes.append(Volume(self, raw_volume))
+			try:
+				volumes.append(Volume(self, raw_volume))
+			except Exception as error:
+				print("\033[91m** Error ** Skipping volume on {}: {}\033[0m".format(self.domain, error), flush=True)
 		return volumes
 
 	def getOneOffFiles(self):
