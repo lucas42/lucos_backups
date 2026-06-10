@@ -138,7 +138,15 @@ class Host:
 		Differs from _outbound_ssh_args in two ways: it returns a ready-to-use
 		command string (not arg list), and it qualifies the ProxyJump host with
 		the SSH user — inside the container ssh runs as root, so it cannot rely on
-		the implicit lucos-backups OS user that a host-side ssh would default to.'''
+		the implicit lucos-backups OS user that a host-side ssh would default to.
+
+		StrictHostKeyChecking=no is set here as parity with the host-side path:
+		_outbound_ssh_args (used by the existing scp/runOnRemote to aurora) already
+		sets it, so the whole cross-host backup SSH path runs this way. The
+		container additionally has no known_hosts of its own. This is NOT a new
+		relaxation introduced by the incremental path; if host-key verification is
+		ever wanted it should be applied estate-wide to the host-side path too, as
+		its own change.'''
 		args = ['ssh', '-o', 'StrictHostKeyChecking=no']
 		if target_host.ssh_gateway and target_host.ssh_gateway_domain != self.domain:
 			args += ['-o', 'ProxyJump={}@{}'.format(SSH_USER, target_host.ssh_gateway_domain)]
