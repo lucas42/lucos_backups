@@ -46,19 +46,32 @@ if [ -z "$VOLUME_NAME" ] || [ -z "$ARCHIVE_PATH" ]; then
 	echo "Usage: $0 <volume_name> <archive_path> [compose_dir]"
 	echo ""
 	echo "  volume_name  - Docker volume to restore (e.g. lucos_photos_postgres_data)"
-	echo "  archive_path - Path to the .tar.gz archive to restore from"
+	echo "  archive_path - Path to restore from. Either a .tar.gz archive (full-snapshot"
+	echo "                 strategy) OR a snapshot directory (incremental strategy, e.g."
+	echo "                 /share/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-10)"
 	echo "  compose_dir  - (Optional) Directory containing docker-compose.yml"
 	echo "                 Fetched from GitHub (lucas42/<project>/main) if omitted"
 	exit 1
 fi
 
-# Validate archive exists and is non-empty before doing anything destructive
-if [ ! -f "$ARCHIVE_PATH" ]; then
-	echo "Error: Archive file not found: $ARCHIVE_PATH"
+# Determine the source type: a directory is an incremental snapshot (browse-and-cp
+# restore, ADR-0002); a regular file is a full-snapshot .tar.gz.
+if [ -d "$ARCHIVE_PATH" ]; then
+	SOURCE_TYPE="snapshot"
+elif [ -f "$ARCHIVE_PATH" ]; then
+	SOURCE_TYPE="tarball"
+else
+	echo "Error: Restore source not found (neither a file nor a directory): $ARCHIVE_PATH"
 	exit 1
 fi
-if [ ! -s "$ARCHIVE_PATH" ]; then
+
+# Validate the source is non-empty before doing anything destructive
+if [ "$SOURCE_TYPE" = "tarball" ] && [ ! -s "$ARCHIVE_PATH" ]; then
 	echo "Error: Archive file is empty: $ARCHIVE_PATH"
+	exit 1
+fi
+if [ "$SOURCE_TYPE" = "snapshot" ] && [ -z "$(ls -A "$ARCHIVE_PATH" 2>/dev/null)" ]; then
+	echo "Error: Snapshot directory is empty: $ARCHIVE_PATH"
 	exit 1
 fi
 
@@ -141,7 +154,7 @@ ARCHIVE_SIZE=$(du -sh "$ARCHIVE_PATH" | cut -f1)
 echo ""
 echo "=== Volume Restore Summary ==="
 echo "  Volume:      $VOLUME_NAME"
-echo "  Archive:     $ARCHIVE_PATH ($ARCHIVE_SIZE)"
+echo "  Source:      $ARCHIVE_PATH ($ARCHIVE_SIZE, $SOURCE_TYPE)"
 echo "  Compose dir: $COMPOSE_DIR"
 echo ""
 echo "This will:"
@@ -204,15 +217,29 @@ if [ -z "$COMPOSE_PROJECT" ]; then
 	echo ""
 fi
 
-# --- Restore data from archive ---
-echo "Restoring data from archive..."
-ARCHIVE_DIR=$(dirname "$(realpath "$ARCHIVE_PATH")")
-ARCHIVE_FILE=$(basename "$ARCHIVE_PATH")
-docker run --rm \
-	--volume "${VOLUME_NAME}:/raw-data" \
-	--mount "src=${ARCHIVE_DIR},target=${ARCHIVE_DIR},type=bind" \
-	alpine:latest \
-	tar -C /raw-data -xzf "${ARCHIVE_DIR}/${ARCHIVE_FILE}"
+# --- Restore data ---
+if [ "$SOURCE_TYPE" = "snapshot" ]; then
+	# Incremental snapshot: the source is a plain directory tree. Copy its
+	# contents into the (empty, freshly-created) volume. `cp -a` preserves
+	# ownership/permissions/timestamps. The trailing /. copies the directory's
+	# *contents* rather than nesting the directory itself.
+	echo "Restoring data from snapshot directory..."
+	SNAPSHOT_DIR=$(realpath "$ARCHIVE_PATH")
+	docker run --rm \
+		--volume "${VOLUME_NAME}:/raw-data" \
+		--mount "src=${SNAPSHOT_DIR},target=/snapshot,type=bind,readonly" \
+		alpine:latest \
+		sh -c 'cp -a /snapshot/. /raw-data/'
+else
+	echo "Restoring data from archive..."
+	ARCHIVE_DIR=$(dirname "$(realpath "$ARCHIVE_PATH")")
+	ARCHIVE_FILE=$(basename "$ARCHIVE_PATH")
+	docker run --rm \
+		--volume "${VOLUME_NAME}:/raw-data" \
+		--mount "src=${ARCHIVE_DIR},target=${ARCHIVE_DIR},type=bind" \
+		alpine:latest \
+		tar -C /raw-data -xzf "${ARCHIVE_DIR}/${ARCHIVE_FILE}"
+fi
 
 # Build the restart command before cleaning up the temp dir (COMPOSE_DIR becomes invalid after cleanup)
 if [ -n "$TEMP_COMPOSE_DIR" ]; then

@@ -11,6 +11,21 @@ from classes.oneoff import OneOffFile
 from classes.shell import GnuShell, BusyBoxShell
 from utils.config import getHostsConfig
 
+# The OS user every host's lucos-backups SSH connection runs as (see the
+# fabric.Connection(user="lucos-backups") calls below).  When commands run
+# directly on a host they default to this user implicitly; but the incremental
+# rsync runs ssh from *inside a container* (as root), so the user must be stated
+# explicitly on the rsync target and the ProxyJump host.
+SSH_USER = "lucos-backups"
+
+def backup_image_ref():
+	'''The lucos_backups image used to deliver source-side tooling (rsync) for the
+	incremental strategy — pinned to this container's own VERSION so the tooling
+	is the exact version CI built and published alongside this code.  Falls back
+	to :latest in development where VERSION is unset.'''
+	version = os.environ.get("VERSION") or "latest"
+	return "lucas42/lucos_backups:{}".format(version)
+
 def format_bytes(size_bytes):
 	'''Convert a byte count to a human-readable string (e.g. 1.2G, 340M)'''
 	size_bytes = int(size_bytes)
@@ -109,13 +124,96 @@ class Host:
 			args += ['-o', 'ProxyJump={}'.format(target_host.ssh_gateway_domain)]
 		return args
 
-	def runOnRemote(self, target_host, command):
+	def runOnRemote(self, target_host, command, timeout=10):
 		'''Run a command on target_host via SSH, routing through a gateway if configured.'''
 		ssh_args = ' '.join(self._outbound_ssh_args(target_host))
-		self.connection.run(
+		return self.connection.run(
 			'ssh {} {} {}'.format(ssh_args, target_host.domain, command),
-			hide=True, timeout=10,
+			hide=True, timeout=timeout,
 		)
+
+	def _container_ssh_command(self, target_host):
+		'''The ssh command rsync uses (via --rsh) when run *inside a container*.
+
+		Differs from _outbound_ssh_args in two ways: it returns a ready-to-use
+		command string (not arg list), and it qualifies the ProxyJump host with
+		the SSH user — inside the container ssh runs as root, so it cannot rely on
+		the implicit lucos-backups OS user that a host-side ssh would default to.'''
+		args = ['ssh', '-o', 'StrictHostKeyChecking=no']
+		if target_host.ssh_gateway and target_host.ssh_gateway_domain != self.domain:
+			args += ['-o', 'ProxyJump={}@{}'.format(SSH_USER, target_host.ssh_gateway_domain)]
+		return ' '.join(args)
+
+	def _latest_snapshot_date(self, target_host, snapshot_base, exclude_date):
+		'''Return the most recent dated snapshot directory name under snapshot_base
+		on target_host (for use as rsync --link-dest), or None if there are none.
+		Ignores exclude_date (today) and any non-date entries (e.g. *.partial).'''
+		try:
+			result = self.runOnRemote(target_host, "ls -1 {}".format(snapshot_base))
+		except invoke.exceptions.UnexpectedExit:
+			return None  # base dir doesn't exist yet (first ever snapshot)
+		dates = []
+		for entry in result.stdout.splitlines():
+			entry = entry.strip()
+			if entry == exclude_date:
+				continue
+			try:
+				datetime.strptime(entry, '%Y-%m-%d')
+			except ValueError:
+				continue  # skip .partial dirs and anything not a plain date
+			dates.append(entry)
+		return max(dates) if dates else None
+
+	def rsyncVolumeSnapshot(self, volume_name, target_host, date):
+		'''Incremental backup of a docker volume to target_host as a dated,
+		hardlink-rotated snapshot directory (ADR-0002).
+
+		rsync runs inside a container on *this* (source) host — same delivery
+		pattern as archiveLocally()'s tar — so nothing is installed on the host.
+		The container is given the forwarded SSH agent socket so it can reach the
+		target (through the ProxyJump gateway) using the same keys the host-side
+		scp path uses.
+
+		--link-dest against the previous snapshot makes unchanged files hardlinks
+		(retention ≈ one full + deltas).  --partial --append-verify makes an
+		interrupted transfer resumable.  The transfer lands in <date>.partial and
+		is renamed to <date> only on success, so a torn copy can never read back
+		as a valid snapshot (ADR C4).'''
+		snapshot_base = target_host.backup_root + "host/{}/volume-snapshots/{}/".format(self.name, volume_name)
+		partial_path = "{}{}.partial".format(snapshot_base, date)
+		final_path = "{}{}".format(snapshot_base, date)
+
+		self.runOnRemote(target_host, "mkdir -p {}".format(snapshot_base))
+		previous = self._latest_snapshot_date(target_host, snapshot_base, exclude_date=date)
+		link_dest = " --link-dest={}{}/".format(snapshot_base, previous) if previous else ""
+
+		rsync_command = (
+			'docker run --rm '
+			'--volume {volume_name}:/raw-data:ro '
+			'--volume "$SSH_AUTH_SOCK":/ssh-agent '
+			'--env SSH_AUTH_SOCK=/ssh-agent '
+			'{image} '
+			'rsync --archive --numeric-ids --partial --append-verify --delete{link_dest} '
+			'--rsh "{rsh}" '
+			'/raw-data/ {user}@{target_domain}:"{partial}/"'
+		).format(
+			volume_name=volume_name,
+			image=backup_image_ref(),
+			link_dest=link_dest,
+			rsh=self._container_ssh_command(target_host),
+			user=SSH_USER,
+			target_domain=target_host.domain,
+			partial=partial_path,
+		)
+		print("Rsyncing snapshot of {} from {} to {} on {}".format(volume_name, self.domain, final_path, target_host.name), flush=True)
+		self.connection.run(rsync_command, hide=True, timeout=7200)
+
+		# Atomic publish: replace any previous same-day snapshot, then rename the
+		# completed partial into place.  The .partial guarantees a torn transfer
+		# is never seen as a finished snapshot.  Normally <final> doesn't exist (a
+		# new date), so rm is a no-op and mv is instant; the longer timeout only
+		# matters on a same-day re-run where rm -rf clears a large prior snapshot.
+		self.runOnRemote(target_host, 'rm -rf "{final}" && mv "{partial}" "{final}"'.format(final=final_path, partial=partial_path), timeout=600)
 
 	def copyTo(self, target_host, source, dest):
 		'''Copy a file to target_host via SCP, routing through a gateway if configured.
@@ -188,6 +286,44 @@ class Host:
 				date=date,
 				size=size,
 				path=filepath,
+			)
+		return backupList + self.getSnapshotBackups()
+
+	def getSnapshotBackups(self):
+		'''Discover incremental (rsync --link-dest) snapshot backups stored on this
+		host.  Each dated directory under host/<src>/volume-snapshots/<vol>/<date>
+		is one instance of a `volume-snapshot` backup.  Returned as recursive
+		Backups so prune() removes whole directories.'''
+		backups = {}
+		backupList = []
+		for snapshot_path in self.shell.find_snapshot_dirs():
+			parts = snapshot_path.replace(self.backup_root, '', 1).strip('/').split('/')
+			# Expected layout: host / <source_host> / volume-snapshots / <volume> / <date>
+			if len(parts) != 5 or parts[0] != 'host' or parts[2] != 'volume-snapshots':
+				continue
+			source_hostname, volume_name, raw_date = parts[1], parts[3], parts[4]
+			try:
+				date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+			except ValueError:
+				continue  # skip *.partial and any non-date entries
+			key = source_hostname + "/" + volume_name
+			if key not in backups:
+				backups[key] = Backup(
+					stored_host=self,
+					source_hostname=source_hostname,
+					type='volume-snapshot',
+					name=volume_name,
+					recursive=True,
+				)
+				backupList.append(backups[key])
+			# Size of a hardlinked snapshot tree is misleading (shared inodes) and
+			# expensive to compute remotely, so it's left as a placeholder — the
+			# host's overall disk-space section is the meaningful capacity signal.
+			backups[key].addInstance(
+				name=raw_date,
+				date=date,
+				size="—",
+				path=snapshot_path,
 			)
 		return backupList
 

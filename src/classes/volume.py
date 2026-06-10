@@ -22,12 +22,17 @@ class Volume:
 			effort_id = getVolumesConfig()[self.name]["recreate_effort"]
 			skip_backup = getVolumesConfig()[self.name].get("skip_backup", False)
 			skip_backup_on_hosts = getVolumesConfig()[self.name].get("skip_backup_on_hosts", [])
+			# Absent / null / "full-snapshot" → the default daily full tar+scp.
+			# "incremental" → rsync --link-dest hardlink-rotated snapshots (ADR-0002).
+			backup_strategy = getVolumesConfig()[self.name].get("backup_strategy") or "full-snapshot"
 		else:
 			known = False
 			description = "Unknown Volume"
 			effort_id = "unknown"
 			skip_backup = False
 			skip_backup_on_hosts = []
+			backup_strategy = "full-snapshot"
+		self.backup_strategy = backup_strategy
 		labels = {}
 		if data["Labels"]:
 			for label in data["Labels"].split(","):
@@ -51,6 +56,7 @@ class Volume:
 			'effort': self.effort,
 			'skip_backup': skip_backup,
 			'skip_backup_on_hosts': skip_backup_on_hosts,
+			'backup_strategy': backup_strategy,
 			'project': {
 				'name': project,
 				'link': "https://github.com/lucas42/"+project,
@@ -98,17 +104,43 @@ class Volume:
 			failed_hosts = ", ".join(h for h, _ in failures)
 			raise Exception("backupToAll failed for {} host(s): {}".format(len(failures), failed_hosts))
 
+	# Backs up the volume to all available hosts as an incremental, hardlink-rotated
+	# rsync snapshot (ADR-0002).  Unlike backupToAll() there is no local tarball step:
+	# rsync transfers directly from the live volume to each destination's dated
+	# snapshot directory.
+	def backupIncremental(self):
+		# Local import to avoid circular dependency (host.py imports volume.py)
+		from classes.host import Host
+		date = datetime.today().strftime('%Y-%m-%d')
+		failures = []
+		for hostname in getHostsConfig():
+			if hostname in self.data["skip_backup_on_hosts"]:
+				print("Skipping {} (in skip_backup_on_hosts list) for {}".format(hostname, self.name), flush=True)
+				continue
+			target_host = Host(hostname)
+			if target_host.domain != self.host.domain:
+				try:
+					self.host.rsyncVolumeSnapshot(self.name, target_host, date)
+				except Exception as e:
+					print("Failed to rsync {} to {}: {}".format(self.name, hostname, e), flush=True)
+					failures.append((hostname, e))
+		if failures:
+			failed_hosts = ", ".join(h for h, _ in failures)
+			raise Exception("backupIncremental failed for {} host(s): {}".format(len(failures), failed_hosts))
+
 	def shouldBackup(self):
 		if self.data["skip_backup"]:
 			return False
 		return True
 
 	def backup(self):
-		if self.shouldBackup():
-			self.backupToAll()
-			return 1
-		else:
+		if not self.shouldBackup():
 			return 0
+		if self.backup_strategy == "incremental":
+			self.backupIncremental()
+		else:
+			self.backupToAll()
+		return 1
 
 	def getData(self):
 		return self.data

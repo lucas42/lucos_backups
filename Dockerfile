@@ -5,7 +5,11 @@ ENV VERSION=$VERSION
 
 WORKDIR /usr/src/app
 
-RUN apk add sed curl openssh-client
+# rsync is used by the incremental backup strategy (ADR-0002): this same image
+# is run as a container on the source host to perform `rsync --link-dest`
+# snapshots, so the binary ships in the versioned image rather than being
+# installed on any host.
+RUN apk add sed curl openssh-client rsync
 RUN pip install pipenv
 
 COPY src/backups.cron .

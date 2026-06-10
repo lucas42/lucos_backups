@@ -84,9 +84,23 @@ class GnuShell:
 		return files
 
 	def find_backup_files(self):
-		'''Returns list of tab-separated strings: "YYYY-MM-DD\\tsize_bytes\\tfilepath"'''
+		'''Returns list of tab-separated strings: "YYYY-MM-DD\\tsize_bytes\\tfilepath"
+
+		The volume-snapshots subtree (incremental rsync snapshots) is excluded —
+		those directories hold tens of thousands of individual media files that are
+		not per-file backup instances; they're discovered separately by
+		find_snapshot_dirs() and represented as one instance per dated snapshot.'''
 		return self.connection.run(
-			"find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -type f -printf \"%TY-%Tm-%Td\\t%s\\t%p\\n\"".format(ROOT_DIR=self.backup_root),
+			"find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -not -path '*/volume-snapshots/*' -type f -printf \"%TY-%Tm-%Td\\t%s\\t%p\\n\"".format(ROOT_DIR=self.backup_root),
+			hide=True, timeout=60,
+		).stdout.splitlines()
+
+	def find_snapshot_dirs(self):
+		'''Returns a list of paths to dated snapshot directories, one per
+		host/<source>/volume-snapshots/<volume>/<date>.  Used for incremental
+		backups (ADR-0002).  Tolerates the host/ tree not existing yet.'''
+		return self.connection.run(
+			"find {ROOT_DIR}host -mindepth 4 -maxdepth 4 -type d -path '*/volume-snapshots/*' 2>/dev/null || true".format(ROOT_DIR=self.backup_root),
 			hide=True, timeout=60,
 		).stdout.splitlines()
 
@@ -164,7 +178,10 @@ class BusyBoxShell:
 
 	def find_backup_files(self):
 		'''Walk the backup tree via SFTP; return tab-separated strings matching
-		GnuShell.find_backup_files() format: "YYYY-MM-DD\\tsize_bytes\\tpath"'''
+		GnuShell.find_backup_files() format: "YYYY-MM-DD\\tsize_bytes\\tpath"
+
+		The volume-snapshots subtree is skipped (see GnuShell.find_backup_files);
+		snapshots are discovered by find_snapshot_dirs() instead.'''
 		sftp = self._sftp()
 		results = []
 		self._walk(sftp, self.backup_root, results)
@@ -178,6 +195,10 @@ class BusyBoxShell:
 		for attr in attrs:
 			if attr.filename.startswith('.'):
 				continue
+			# Don't descend into incremental snapshot trees — they're huge and
+			# handled by find_snapshot_dirs().
+			if attr.filename == 'volume-snapshots':
+				continue
 			path = current.rstrip('/') + '/' + attr.filename
 			if stat.S_ISREG(attr.st_mode):
 				# Only include files at depth >= 2 below backup_root, matching
@@ -188,3 +209,26 @@ class BusyBoxShell:
 					results.append('{}\t{}\t{}'.format(mod_date, attr.st_size, path))
 			elif stat.S_ISDIR(attr.st_mode):
 				self._walk(sftp, path, results)
+
+	def find_snapshot_dirs(self):
+		'''Returns a list of paths to dated snapshot directories, one per
+		host/<source>/volume-snapshots/<volume>/<date>.  Walks only the four
+		directory levels involved (no per-file recursion), so it stays cheap even
+		for a volume with tens of thousands of files per snapshot.'''
+		sftp = self._sftp()
+		results = []
+		host_root = self.backup_root.rstrip('/') + '/host'
+
+		def list_dirs(directory):
+			try:
+				return [a.filename for a in sftp.listdir_attr(directory) if stat.S_ISDIR(a.st_mode) and not a.filename.startswith('.')]
+			except Exception:
+				return []
+
+		for source_host in list_dirs(host_root):
+			snapshots_root = '{}/{}/volume-snapshots'.format(host_root, source_host)
+			for volume in list_dirs(snapshots_root):
+				volume_dir = '{}/{}'.format(snapshots_root, volume)
+				for date_dir in list_dirs(volume_dir):
+					results.append('{}/{}'.format(volume_dir, date_dir))
+		return results
