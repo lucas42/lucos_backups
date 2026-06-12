@@ -319,3 +319,50 @@ class TestPruneScript:
 		assert failure_calls, "Unreachable host must cause a failure tracker call even if other hosts succeed"
 		assert failure_calls[0].kwargs.get("job_name") == "prune-backups", \
 			"updateScheduleTracker failure call must include job_name='prune-backups'"
+
+
+# ---------------------------------------------------------------------------
+# Recursive prune for snapshot (directory) backups (ADR-0002)
+# ---------------------------------------------------------------------------
+
+class TestRecursivePrune:
+	"""Snapshot backups are directories, so prune() must use `rm -rf`, not `rm -f`."""
+
+	def setup_method(self):
+		sys.modules.pop("classes.backup", None)
+
+	def _make_recursive_backup(self, host, instances):
+		from classes.backup import Backup
+		b = Backup(host, "avalon", "volume-snapshot", "lucos_photos_photos", recursive=True)
+		for name, d, size, path in instances:
+			b.addInstance(name, d, size, path)
+		return b
+
+	def test_recursive_prune_uses_rm_rf(self):
+		from datetime import date, timedelta
+		host = make_stored_host()
+		# One fresh (kept), one old enough to prune (day 1, 28 days old → not kept)
+		old_date = (date.today() - timedelta(days=28)).replace(day=1)
+		fresh_date = date.today() - timedelta(days=1)
+		b = self._make_recursive_backup(host, [
+			("old", old_date, "—", "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/{}".format(old_date)),
+			("fresh", fresh_date, "—", "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/{}".format(fresh_date)),
+		])
+		pruned = b.prune(dryrun=False)
+		assert pruned == 1
+		rm_cmd = host.connection.run.call_args[0][0]
+		assert rm_cmd.startswith("rm -rf ")
+
+	def test_recursive_dryrun_uses_ls_d(self):
+		from datetime import date, timedelta
+		host = make_stored_host()
+		old_date = (date.today() - timedelta(days=28)).replace(day=1)
+		fresh_date = date.today() - timedelta(days=1)
+		b = self._make_recursive_backup(host, [
+			("old", old_date, "—", "/snap/{}".format(old_date)),
+			("fresh", fresh_date, "—", "/snap/{}".format(fresh_date)),
+		])
+		b.prune(dryrun=True)
+		cmd = host.connection.run.call_args[0][0]
+		assert "ls -d" in cmd
+		assert "rm" not in cmd

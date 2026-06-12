@@ -34,7 +34,9 @@ An empty result (`map[]`) means labels are missing.
 
 ## Backup Archive Location
 
-Archives are stored in two places:
+Where backups live depends on the volume's `backup_strategy` (set per-volume in `lucos_configy`).
+
+### Full-snapshot volumes (the default — `.tar.gz` archives)
 
 | Location | Path |
 |---|---|
@@ -42,6 +44,20 @@ Archives are stored in two places:
 | On each backup host | `/srv/backups/host/<originating_host>/volume/<volume_name>.<date>.tar.gz` |
 
 Choose the most recent archive from a date before the data loss occurred. Prefer archives from the originating host where available — they're fresher.
+
+### Incremental volumes (`backup_strategy: incremental` — dated snapshot directories)
+
+Incremental volumes (currently `lucos_photos_photos`) are stored as **hardlink-rotated snapshot directories** (ADR-0002), not tarballs. There is no local copy on the originating host — only the destination host:
+
+| Location | Path |
+|---|---|
+| On each backup host | `<backup_root>/host/<originating_host>/volume-snapshots/<volume_name>/<date>/` |
+
+For example, on aurora: `/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-10/`.
+
+Each dated directory is a **complete, browsable point-in-time copy** of the volume as it was on that date — pick the directory at (or nearest before) the date you want. Because every nightly run writes a fresh dated snapshot, a file that existed on a given day is present in that day's snapshot and absent from snapshots taken after it was deleted; restoring from a date naturally gives you exactly what the volume held on that date. No tarball extraction is needed — you can `ls` and `cp` directly out of a snapshot directory.
+
+> **Note:** `restore-volume.sh` accepts either a `.tar.gz` archive path **or** a snapshot directory path and picks the right restore method automatically.
 
 ---
 
@@ -170,6 +186,15 @@ docker run --rm --volume <volume_name>:/data alpine:latest ls -la /data
 ```
 
 For `lucos_photos_photos`, confirm a sample of original files and derivatives are present and the API can serve them.
+
+> **`lucos_photos_photos` is an incremental volume** (`backup_strategy: incremental`). Restore from a **snapshot directory** rather than a `.tar.gz` — see the [Incremental volumes](#incremental-volumes-backup_strategy-incremental--dated-snapshot-directories) section above. Example:
+>
+> ```sh
+> ./restore-volume.sh lucos_photos_photos \
+>   /share/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-10
+> ```
+>
+> The script detects the directory and restores via `cp -a` instead of `tar -xzf`. For a quick partial recovery of a few files, you can also `cp` straight out of the snapshot directory on the backup host without running the script at all.
 
 For `lucos_media_metadata_api_db`, the volume contains a SQLite file at `media.sqlite` (not a PostgreSQL database). Confirm it is present and non-empty:
 

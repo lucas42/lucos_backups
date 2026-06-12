@@ -731,3 +731,90 @@ class TestCopyTo:
 		assert "/srv/backups/file.tar.gz" in cmd
 		assert "aurora.local" in cmd
 		assert "/backups/host/avalon/volume/" in cmd
+
+
+# ---------------------------------------------------------------------------
+# Incremental snapshot discovery + exclusion (ADR-0002)
+# ---------------------------------------------------------------------------
+
+class TestGnuShellSnapshots:
+
+    def setup_method(self):
+        from classes.shell import GnuShell
+        self.conn = make_connection()
+        self.shell = GnuShell(self.conn, "/srv/backups/")
+
+    def _run_result(self, text):
+        r = MagicMock()
+        r.stdout = text
+        return r
+
+    def test_find_backup_files_excludes_snapshot_tree(self):
+        """The find command must exclude the volume-snapshots subtree."""
+        self.conn.run.return_value = self._run_result("")
+        self.shell.find_backup_files()
+        cmd = self.conn.run.call_args[0][0]
+        assert "-not -path '*/volume-snapshots/*'" in cmd
+
+    def test_find_snapshot_dirs_targets_dated_directories(self):
+        """find_snapshot_dirs looks for depth-4 dirs under host/ in the snapshot tree."""
+        self.conn.run.return_value = self._run_result(
+            "/srv/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-10\n"
+        )
+        result = self.shell.find_snapshot_dirs()
+        cmd = self.conn.run.call_args[0][0]
+        assert "volume-snapshots" in cmd
+        assert "-maxdepth 4" in cmd
+        assert result == ["/srv/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-10"]
+
+
+class TestBusyBoxShellSnapshots:
+
+    def setup_method(self):
+        from classes.shell import BusyBoxShell
+        self.conn = make_connection()
+        self.sftp = MagicMock()
+        self.conn.sftp.return_value = self.sftp
+        self.shell = BusyBoxShell(self.conn, "/backups/")
+
+    def test_walk_skips_volume_snapshots_subtree(self):
+        """find_backup_files must not descend into a volume-snapshots directory."""
+        mtime = datetime(2026, 2, 14).timestamp()
+        listing = {
+            "/backups/": [make_dir_attr("host")],
+            "/backups/host": [make_dir_attr("avalon")],
+            "/backups/host/avalon": [make_dir_attr("volume"), make_dir_attr("volume-snapshots")],
+            "/backups/host/avalon/volume": [make_sftp_attr("db.2026-02-14.tar.gz", size=4096, mtime=mtime)],
+            # If the walk wrongly descends here, a photo file would leak into results
+            "/backups/host/avalon/volume-snapshots": [make_dir_attr("lucos_photos_photos")],
+            "/backups/host/avalon/volume-snapshots/lucos_photos_photos": [make_dir_attr("2026-02-14")],
+            "/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-02-14": [
+                make_sftp_attr("IMG_0001.jpg", size=999, mtime=mtime)
+            ],
+        }
+        self.sftp.listdir_attr.side_effect = lambda p: listing.get(p, [])
+        result = self.shell.find_backup_files()
+        assert len(result) == 1
+        assert "db.2026-02-14.tar.gz" in result[0]
+        assert not any("IMG_0001" in r for r in result)
+
+    def test_find_snapshot_dirs_walks_four_levels(self):
+        """find_snapshot_dirs returns one path per host/<src>/volume-snapshots/<vol>/<date>."""
+        listing = {
+            "/backups/host": [make_dir_attr("avalon")],
+            "/backups/host/avalon/volume-snapshots": [make_dir_attr("lucos_photos_photos")],
+            "/backups/host/avalon/volume-snapshots/lucos_photos_photos": [
+                make_dir_attr("2026-06-09"), make_dir_attr("2026-06-10"),
+            ],
+        }
+        self.sftp.listdir_attr.side_effect = lambda p: listing.get(p, [])
+        result = self.shell.find_snapshot_dirs()
+        assert sorted(result) == [
+            "/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-09",
+            "/backups/host/avalon/volume-snapshots/lucos_photos_photos/2026-06-10",
+        ]
+
+    def test_find_snapshot_dirs_empty_when_no_host_tree(self):
+        """No host/ tree yet → empty list, no error."""
+        self.sftp.listdir_attr.side_effect = lambda p: (_ for _ in ()).throw(FileNotFoundError())
+        assert self.shell.find_snapshot_dirs() == []

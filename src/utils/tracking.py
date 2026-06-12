@@ -48,7 +48,10 @@ def fetchAllInfo():
 				info["notInConfig"].append(volume["name"])
 			volume["backups"] = []
 			for backup in info["backups"]:
-				if backup['type'] == "volume" and volume["name"] == backup["name"] and volume["source_host"] == backup["source_host"]:
+				# "volume-snapshot" is the incremental (rsync --link-dest) backup
+				# type; match it to its volume too so an incremental-strategy volume
+				# doesn't render as "No Backups".
+				if backup['type'] in ("volume", "volume-snapshot") and volume["name"] == backup["name"] and volume["source_host"] == backup["source_host"]:
 					volume["backups"].append(backup)
 		for file in info["one_off_files"]:
 			file["backups"] = []
@@ -72,7 +75,7 @@ def fetchAllInfo():
 		seen_backup_volume_keys = set()
 		backups_without_originals = []
 		for backup in info["backups"]:
-			if backup["type"] != "volume":
+			if backup["type"] not in ("volume", "volume-snapshot"):
 				continue
 			key = (backup["source_host"], backup["name"])
 			if key in seen_backup_volume_keys:

@@ -5,11 +5,15 @@ A set of snapshots of a given archive of files, copied from a particular `Host` 
 from datetime import date, timedelta
 
 class Backup:
-	def __init__(self, stored_host, source_hostname, type, name):
+	def __init__(self, stored_host, source_hostname, type, name, recursive=False):
 		self.stored_host = stored_host
 		self.source_hostname = source_hostname
 		self.type = type
 		self.name = name
+		# recursive=True for backups whose instances are directories (e.g. the
+		# dated snapshot directories produced by the incremental rsync strategy),
+		# so prune() removes the whole tree with `rm -rf` rather than `rm -f`.
+		self.recursive = recursive
 		self.instances = []
 
 	def addInstance(self, name, date, size, path):
@@ -33,14 +37,19 @@ class Backup:
 			'instances': self.instances,
 		}
 	def prune(self, dryrun=True):
+		# `rm -rf` for directory-based backups (snapshots), `rm -f` for single
+		# files.  `ls -d` in dryrun mode lists the directory itself rather than
+		# its contents.
+		rm_command = "rm -rf" if self.recursive else "rm -f"
+		ls_command = "ls -d" if self.recursive else "ls"
 		pruneCount = 0
 		for instance in self.instances:
 			if not self.toKeep(instance):
 				if dryrun:
 					# In dryrun mode, use `ls` to verify the file for deletion actually exists (will error if it doesn't)
-					self.stored_host.connection.run("echo -n \"DRYRUN - would delete \" && ls {}".format(instance['path']), hide=False, timeout=3)
+					self.stored_host.connection.run("echo -n \"DRYRUN - would delete \" && {} {}".format(ls_command, instance['path']), hide=False, timeout=3)
 				else:
-					self.stored_host.connection.run("rm -f {}".format(instance['path']), hide=False)
+					self.stored_host.connection.run("{} {}".format(rm_command, instance['path']), hide=False)
 					pruneCount += 1
 		return pruneCount
 
