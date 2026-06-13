@@ -18,6 +18,16 @@ from utils.config import getHostsConfig
 # explicitly on the rsync target and the ProxyJump host.
 SSH_USER = "lucos-backups"
 
+# The source host's lucos-backups known_hosts.  The incremental rsync runs ssh
+# from inside an ephemeral container (as root) which has no known_hosts of its
+# own, so the ProxyJump gateway and target host keys can't be verified and the
+# jump hop fails host-key verification (#327) — note that command-line
+# StrictHostKeyChecking=no does NOT propagate to the ProxyJump hop.  We mount
+# this file read-only into the container so its ssh verifies the same host keys
+# the host-side scp path already trusts.  init-host.sh creates the user with
+# `useradd --system --create-home`, so the home is /home/lucos-backups.
+SSH_KNOWN_HOSTS = "/home/{}/.ssh/known_hosts".format(SSH_USER)
+
 def backup_image_ref():
 	'''The lucos_backups image used to deliver source-side tooling (rsync) for the
 	incremental strategy — pinned to this container's own VERSION so the tooling
@@ -142,11 +152,12 @@ class Host:
 
 		StrictHostKeyChecking=no is set here as parity with the host-side path:
 		_outbound_ssh_args (used by the existing scp/runOnRemote to aurora) already
-		sets it, so the whole cross-host backup SSH path runs this way. The
-		container additionally has no known_hosts of its own. This is NOT a new
-		relaxation introduced by the incremental path; if host-key verification is
-		ever wanted it should be applied estate-wide to the host-side path too, as
-		its own change.'''
+		sets it, so the whole cross-host backup SSH path runs this way — known keys
+		are verified, unknown keys are accepted on first use. The container has no
+		known_hosts of its own, so rsyncVolumeSnapshot mounts the host user's
+		known_hosts (SSH_KNOWN_HOSTS) into it; without that the ProxyJump hop fails
+		host-key verification, because StrictHostKeyChecking=no does not propagate
+		to the jump connection (#327).'''
 		args = ['ssh', '-o', 'StrictHostKeyChecking=no']
 		if target_host.ssh_gateway and target_host.ssh_gateway_domain != self.domain:
 			args += ['-o', 'ProxyJump={}@{}'.format(SSH_USER, target_host.ssh_gateway_domain)]
@@ -180,13 +191,29 @@ class Host:
 		pattern as archiveLocally()'s tar — so nothing is installed on the host.
 		The container is given the forwarded SSH agent socket so it can reach the
 		target (through the ProxyJump gateway) using the same keys the host-side
-		scp path uses.
+		scp path uses, and the host user's known_hosts (mounted read-only) so it
+		can verify the gateway and target host keys (#327).
 
 		--link-dest against the previous snapshot makes unchanged files hardlinks
 		(retention ≈ one full + deltas).  --partial --append-verify makes an
 		interrupted transfer resumable.  The transfer lands in <date>.partial and
 		is renamed to <date> only on success, so a torn copy can never read back
 		as a valid snapshot (ADR C4).'''
+		# Fail fast if the known_hosts we're about to bind-mount is missing: Docker
+		# creates a *directory* at a missing bind-mount source, which would both
+		# corrupt the source user's .ssh and leave the container with an unusable
+		# directory at /root/.ssh/known_hosts.  The file lives on the source host,
+		# so this is checked there (self.connection over SSH), not in the
+		# orchestrating container's own filesystem (#327).
+		try:
+			self.connection.run("test -f {}".format(SSH_KNOWN_HOSTS), hide=True, timeout=10)
+		except invoke.exceptions.UnexpectedExit:
+			raise RuntimeError(
+				"known_hosts not found at {} on {} — refusing to run the incremental "
+				"rsync, as it would create a directory there and corrupt the user's "
+				".ssh (#327)".format(SSH_KNOWN_HOSTS, self.domain)
+			)
+
 		snapshot_base = target_host.backup_root + "host/{}/volume-snapshots/{}/".format(self.name, volume_name)
 		partial_path = "{}{}.partial".format(snapshot_base, date)
 		final_path = "{}{}".format(snapshot_base, date)
@@ -199,6 +226,7 @@ class Host:
 			'docker run --rm '
 			'--volume {volume_name}:/raw-data:ro '
 			'--volume "$SSH_AUTH_SOCK":/ssh-agent '
+			'--volume {known_hosts}:/root/.ssh/known_hosts:ro '
 			'--env SSH_AUTH_SOCK=/ssh-agent '
 			'{image} '
 			'rsync --archive --numeric-ids --partial --append-verify --delete{link_dest} '
@@ -207,6 +235,7 @@ class Host:
 		).format(
 			volume_name=volume_name,
 			image=backup_image_ref(),
+			known_hosts=SSH_KNOWN_HOSTS,
 			link_dest=link_dest,
 			rsh=self._container_ssh_command(target_host),
 			user=SSH_USER,
