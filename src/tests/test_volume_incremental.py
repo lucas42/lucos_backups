@@ -231,6 +231,16 @@ class TestRsyncVolumeSnapshot:
         # rsync target is user-qualified too
         assert "lucos-backups@aurora.local:" in cmd
 
+    def test_rsync_mounts_host_known_hosts_for_hostkey_verification(self):
+        # Regression test for #327: the in-container (root) ssh has no known_hosts
+        # of its own, and StrictHostKeyChecking=no does NOT propagate to the
+        # ProxyJump hop — so without the host user's known_hosts mounted in, the
+        # jump to the gateway fails host-key verification. Mount must be read-only.
+        self.avalon.connection.run.side_effect = self._run_factory()
+        self.avalon.rsyncVolumeSnapshot("lucos_photos_photos", self.aurora, "2026-06-10")
+        cmd = self._docker_command()
+        assert "/home/lucos-backups/.ssh/known_hosts:/root/.ssh/known_hosts:ro" in cmd
+
     def test_link_dest_used_when_previous_snapshot_exists(self):
         # ls returns prior dates + today's stale partial; today and partial must be ignored
         self.avalon.connection.run.side_effect = self._run_factory(
