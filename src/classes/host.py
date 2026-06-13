@@ -206,7 +206,7 @@ class Host:
 		# so this is checked there (self.connection over SSH), not in the
 		# orchestrating container's own filesystem (#327).
 		try:
-			self.connection.run("test -f {}".format(SSH_KNOWN_HOSTS), hide=True)
+			self.connection.run("test -f {}".format(SSH_KNOWN_HOSTS), hide=True, timeout=10)
 		except invoke.exceptions.UnexpectedExit:
 			raise RuntimeError(
 				"known_hosts not found at {} on {} — refusing to run the incremental "
