@@ -199,6 +199,21 @@ class Host:
 		interrupted transfer resumable.  The transfer lands in <date>.partial and
 		is renamed to <date> only on success, so a torn copy can never read back
 		as a valid snapshot (ADR C4).'''
+		# Fail fast if the known_hosts we're about to bind-mount is missing: Docker
+		# creates a *directory* at a missing bind-mount source, which would both
+		# corrupt the source user's .ssh and leave the container with an unusable
+		# directory at /root/.ssh/known_hosts.  The file lives on the source host,
+		# so this is checked there (self.connection over SSH), not in the
+		# orchestrating container's own filesystem (#327).
+		try:
+			self.connection.run("test -f {}".format(SSH_KNOWN_HOSTS), hide=True)
+		except invoke.exceptions.UnexpectedExit:
+			raise RuntimeError(
+				"known_hosts not found at {} on {} — refusing to run the incremental "
+				"rsync, as it would create a directory there and corrupt the user's "
+				".ssh (#327)".format(SSH_KNOWN_HOSTS, self.domain)
+			)
+
 		snapshot_base = target_host.backup_root + "host/{}/volume-snapshots/{}/".format(self.name, volume_name)
 		partial_path = "{}{}.partial".format(snapshot_base, date)
 		final_path = "{}{}".format(snapshot_base, date)

@@ -241,6 +241,30 @@ class TestRsyncVolumeSnapshot:
         cmd = self._docker_command()
         assert "/home/lucos-backups/.ssh/known_hosts:/root/.ssh/known_hosts:ro" in cmd
 
+    def test_rsync_aborts_when_known_hosts_missing(self):
+        # Regression guard for #327: a missing known_hosts on the source host would
+        # make Docker create a *directory* at the bind-mount source (corrupting the
+        # user's .ssh), so the rsync must abort BEFORE the docker run rather than
+        # mount an unusable path. The check runs over SSH on the source host.
+        import classes.host
+        class FakeUnexpectedExit(Exception):
+            pass
+        classes.host.invoke.exceptions.UnexpectedExit = FakeUnexpectedExit
+
+        def run(*args, **kwargs):
+            cmd = args[0]
+            if cmd.startswith("test -f"):  # known_hosts existence probe
+                raise FakeUnexpectedExit("file not found")
+            r = MagicMock()
+            r.stdout = ""
+            return r
+        self.avalon.connection.run.side_effect = run
+
+        with pytest.raises(RuntimeError, match="known_hosts not found"):
+            self.avalon.rsyncVolumeSnapshot("lucos_photos_photos", self.aurora, "2026-06-10")
+        # Must abort before issuing any docker run
+        assert self._docker_command() is None
+
     def test_link_dest_used_when_previous_snapshot_exists(self):
         # ls returns prior dates + today's stale partial; today and partial must be ignored
         self.avalon.connection.run.side_effect = self._run_factory(
