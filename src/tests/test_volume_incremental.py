@@ -291,6 +291,24 @@ class TestRsyncVolumeSnapshot:
         assert "rm -rf" in publish[0]  # replace any previous same-day snapshot first
         assert "2026-06-10.partial" in publish[0]
 
+    def test_publish_compound_command_runs_entirely_on_target(self):
+        # Regression test for #330: the publish step is a compound `rm … && mv …`
+        # command. It must be passed to ssh as a SINGLE shell-quoted argument so the
+        # whole thing runs on the target; otherwise the local (source-host) shell
+        # interprets the `&&` and runs `mv` locally, where the .partial doesn't
+        # exist. Assert the compound command survives local-shell tokenisation as
+        # one token (i.e. it's quoted) — this fails on the unquoted code.
+        import shlex
+        self.avalon.connection.run.side_effect = self._run_factory()
+        self.avalon.rsyncVolumeSnapshot("lucos_photos_photos", self.aurora, "2026-06-10")
+        publish = next(c[0][0] for c in self.avalon.connection.run.call_args_list
+                       if "mv " in c[0][0] and ".partial" in c[0][0])
+        tokens = shlex.split(publish)
+        assert any("&&" in tok and "mv" in tok for tok in tokens), \
+            "the `rm … && mv …` must be a single quoted argument so it all runs on the target"
+        # And the bare `&&` must NOT survive as its own local-shell operator token
+        assert "&&" not in tokens, "`&&` leaked as a local-shell operator — mv would run on the source host"
+
     def test_latest_snapshot_date_ignores_today_and_non_dates(self):
         self.avalon.connection.run.side_effect = self._run_factory(
             "2026-06-08\n2026-06-09\n2026-06-10\n2026-06-10.partial\nnotadate\n"
