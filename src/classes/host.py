@@ -3,7 +3,7 @@ Host
 A particular computer (virtual or physical), which has files to be backed up from, can store backups, or both.
 '''
 import yaml, fabric, invoke
-import os
+import os, shlex
 from datetime import datetime
 from classes.volume import Volume
 from classes.backup import Backup
@@ -135,10 +135,16 @@ class Host:
 		return args
 
 	def runOnRemote(self, target_host, command, timeout=10):
-		'''Run a command on target_host via SSH, routing through a gateway if configured.'''
+		'''Run a command on target_host via SSH, routing through a gateway if configured.
+
+		The command is shell-quoted so it is passed to ssh as a single argument and
+		runs in its entirety on the target host.  Without this, shell metacharacters
+		(&&, ;, |, redirects) in a compound command would be interpreted by the
+		*local* (source-host) shell instead — e.g. `rm … && mv …` ran `rm` on the
+		target but `mv` locally (#330).'''
 		ssh_args = ' '.join(self._outbound_ssh_args(target_host))
 		return self.connection.run(
-			'ssh {} {} {}'.format(ssh_args, target_host.domain, command),
+			'ssh {} {} {}'.format(ssh_args, target_host.domain, shlex.quote(command)),
 			hide=True, timeout=timeout,
 		)
 
