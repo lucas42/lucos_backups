@@ -170,6 +170,40 @@ class Host:
 			args += ['-o', 'ProxyJump={}@{}'.format(SSH_USER, target_host.ssh_gateway_domain)]
 		return ' '.join(args)
 
+	def _cleanup_stale_partials(self, target_host, snapshot_base, current_date):
+		'''Remove stale <date>.partial/ directories from snapshot_base on target_host.
+
+		Called at the start of each incremental run (before the rsync transfer).
+		Any <date>.partial/ whose date component != current_date is an orphan from
+		a failed prior run: it cannot be resumed (resume only targets today's date)
+		and _latest_snapshot_date already ignores it as a --link-dest base.  Left
+		uncollected, these accumulate silently on the capped NAS (#333).
+
+		The current run's own <current_date>.partial/ is excluded by the
+		current_date predicate, so in-progress and same-date resumable partials
+		are never touched.  Non-date-format .partial entries are also skipped.
+
+		Backups run serially per volume (cron), so there is no concurrent
+		same-volume run to race the deletion.'''
+		try:
+			result = self.runOnRemote(target_host, "ls -1 {}".format(snapshot_base))
+		except invoke.exceptions.UnexpectedExit:
+			return  # base dir doesn't exist yet — nothing to clean up
+		for entry in result.stdout.splitlines():
+			entry = entry.strip()
+			if not entry.endswith('.partial'):
+				continue
+			date_part = entry[:-len('.partial')]
+			if date_part == current_date:
+				continue  # current run's own .partial — preserve for resume
+			try:
+				datetime.strptime(date_part, '%Y-%m-%d')
+			except ValueError:
+				continue  # unexpected format — skip rather than delete blindly
+			stale_path = "{}{}".format(snapshot_base, entry)
+			print("Removing stale partial backup directory: {}".format(stale_path), flush=True)
+			self.runOnRemote(target_host, 'rm -rf "{}"'.format(stale_path))
+
 	def _latest_snapshot_date(self, target_host, snapshot_base, exclude_date):
 		'''Return the most recent dated snapshot directory name under snapshot_base
 		on target_host (for use as rsync --link-dest), or None if there are none.
@@ -226,6 +260,7 @@ class Host:
 		final_path = "{}{}".format(snapshot_base, date)
 
 		self.runOnRemote(target_host, "mkdir -p {}".format(snapshot_base))
+		self._cleanup_stale_partials(target_host, snapshot_base, date)
 		previous = self._latest_snapshot_date(target_host, snapshot_base, exclude_date=date)
 		link_dest = " --link-dest={}{}/".format(snapshot_base, previous) if previous else ""
 

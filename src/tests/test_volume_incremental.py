@@ -346,3 +346,138 @@ class TestRsyncVolumeSnapshot:
         assert b.recursive is True
         # .partial is skipped (not a parseable date); two real snapshots remain
         assert len(b.instances) == 2
+
+
+# ---------------------------------------------------------------------------
+# Host._cleanup_stale_partials — GC of orphaned <date>.partial/ directories
+# ---------------------------------------------------------------------------
+
+class TestCleanupStalePartials:
+    """Unit tests for _cleanup_stale_partials (#333).
+
+    Orphaned <date>.partial/ dirs accumulate when a run fails after rsync but
+    before publish, and the next successful run lands on a later date.  The GC
+    predicate is: any <date>.partial whose date != the current run's date.
+    """
+
+    FAKE_HOSTS_CONFIG = {
+        "avalon": {"domain": "avalon.l42.eu", "backup_root": "/srv/backups/"},
+        "aurora": {
+            "domain": "aurora.local",
+            "ssh_gateway": "xwing",
+            "is_storage_only": True,
+            "shell_flavour": "busybox",
+            "backup_root": "/share/backups/",
+        },
+        "xwing": {"domain": "xwing.l42.eu", "backup_root": "/srv/backups/"},
+    }
+
+    SNAPSHOT_BASE = "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/"
+
+    def setup_method(self):
+        import sys
+        self.sys = sys
+        sys.modules.setdefault("utils", MagicMock())
+        sys.modules["utils.config"] = MagicMock()
+        fake_fabric = MagicMock()
+        fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+        sys.modules["fabric"] = fake_fabric
+        sys.modules.setdefault("invoke", MagicMock())
+
+        import importlib
+        import classes.host
+        importlib.reload(classes.host)
+
+        self.host_patcher = patch("classes.host.getHostsConfig", return_value=self.FAKE_HOSTS_CONFIG)
+        self.host_patcher.start()
+
+        from classes.host import Host
+        self.avalon = Host("avalon")
+        self.aurora = Host("aurora")
+
+    def teardown_method(self):
+        self.host_patcher.stop()
+        self.sys.modules.pop("utils.config", None)
+        self.sys.modules.pop("utils", None)
+        self.sys.modules.pop("fabric", None)
+        self.sys.modules.pop("invoke", None)
+        self.sys.modules.pop("classes.host", None)
+
+    def _ls_run_factory(self, ls_output):
+        """side_effect that returns ls_output for ls -1 calls, empty for everything else."""
+        def run(*args, **kwargs):
+            r = MagicMock()
+            r.stdout = ls_output if "ls -1" in args[0] else ""
+            return r
+        return run
+
+    def _rm_calls(self):
+        """All connection.run args that issued an rm -rf on the target via ssh."""
+        return [
+            c[0][0] for c in self.avalon.connection.run.call_args_list
+            if "rm -rf" in c[0][0] and ".partial" in c[0][0]
+            and "&&" not in c[0][0]  # exclude the atomic-publish rm+mv compound
+        ]
+
+    def test_stale_partial_from_prior_date_is_deleted(self):
+        """A .partial whose date is earlier than today's run date must be rm -rf'd."""
+        self.avalon.connection.run.side_effect = self._ls_run_factory(
+            "2026-06-08\n2026-06-09\n2026-06-09.partial\n"
+        )
+        self.avalon._cleanup_stale_partials(self.aurora, self.SNAPSHOT_BASE, "2026-06-10")
+        rm_calls = self._rm_calls()
+        assert len(rm_calls) == 1
+        assert "2026-06-09.partial" in rm_calls[0]
+
+    def test_current_date_partial_is_never_deleted(self):
+        """Today's .partial is the in-progress (or resumable) transfer — must not be touched."""
+        self.avalon.connection.run.side_effect = self._ls_run_factory(
+            "2026-06-09\n2026-06-10.partial\n"
+        )
+        self.avalon._cleanup_stale_partials(self.aurora, self.SNAPSHOT_BASE, "2026-06-10")
+        assert self._rm_calls() == []
+
+    def test_non_date_partial_is_not_deleted(self):
+        """A .partial whose prefix is not a valid date is skipped (don't rm unknown dirs)."""
+        self.avalon.connection.run.side_effect = self._ls_run_factory(
+            "notadate.partial\n"
+        )
+        self.avalon._cleanup_stale_partials(self.aurora, self.SNAPSHOT_BASE, "2026-06-10")
+        assert self._rm_calls() == []
+
+    def test_multiple_stale_partials_all_deleted(self):
+        """Multiple orphaned partials from different prior dates are all removed."""
+        self.avalon.connection.run.side_effect = self._ls_run_factory(
+            "2026-06-07.partial\n2026-06-08.partial\n2026-06-10.partial\n"
+        )
+        self.avalon._cleanup_stale_partials(self.aurora, self.SNAPSHOT_BASE, "2026-06-10")
+        rm_calls = self._rm_calls()
+        assert len(rm_calls) == 2
+        assert any("2026-06-07.partial" in c for c in rm_calls)
+        assert any("2026-06-08.partial" in c for c in rm_calls)
+        assert not any("2026-06-10.partial" in c for c in rm_calls)
+
+    def test_missing_base_dir_does_not_raise(self):
+        """If snapshot_base doesn't exist yet (first run), ls fails — must return silently."""
+        import classes.host
+        class FakeUnexpectedExit(Exception):
+            pass
+        classes.host.invoke.exceptions.UnexpectedExit = FakeUnexpectedExit
+        self.avalon.connection.run.side_effect = FakeUnexpectedExit("no such file")
+        # Must not raise
+        self.avalon._cleanup_stale_partials(self.aurora, self.SNAPSHOT_BASE, "2026-06-10")
+        assert self._rm_calls() == []
+
+    def test_stale_partial_gc_runs_before_rsync_in_full_snapshot_flow(self):
+        """rsyncVolumeSnapshot calls _cleanup_stale_partials before the docker rsync."""
+        self.avalon.connection.run.side_effect = self._ls_run_factory(
+            "2026-06-09.partial\n"
+        )
+        self.avalon.rsyncVolumeSnapshot("lucos_photos_photos", self.aurora, "2026-06-10")
+        all_calls = [c[0][0] for c in self.avalon.connection.run.call_args_list]
+        # Find the rm -rf (GC) and the docker run (rsync) indices
+        gc_idx = next((i for i, c in enumerate(all_calls) if "rm -rf" in c and "2026-06-09.partial" in c and "&&" not in c), None)
+        rsync_idx = next((i for i, c in enumerate(all_calls) if "docker run" in c), None)
+        assert gc_idx is not None, "GC rm -rf must be issued"
+        assert rsync_idx is not None, "rsync docker run must be issued"
+        assert gc_idx < rsync_idx, "GC must run before the rsync transfer"
