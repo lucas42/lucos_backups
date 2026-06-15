@@ -22,7 +22,7 @@ SSH_USER = "lucos-backups"
 # from inside an ephemeral container (as root) which has no known_hosts of its
 # own, so the ProxyJump gateway and target host keys can't be verified and the
 # jump hop fails host-key verification (#327) — note that command-line
-# StrictHostKeyChecking=no does NOT propagate to the ProxyJump hop.  We mount
+# StrictHostKeyChecking=accept-new does NOT propagate to the ProxyJump hop.  We mount
 # this file read-only into the container so its ssh verifies the same host keys
 # the host-side scp path already trusts.  init-host.sh creates the user with
 # `useradd --system --create-home`, so the home is /home/lucos-backups.
@@ -129,7 +129,7 @@ class Host:
 		to reach aurora — the recursive connection fails with SSH error 255.
 		In that case xwing connects directly to aurora's domain (which it
 		can reach on the LAN since it is the gateway by definition).'''
-		args = ['-o', 'StrictHostKeyChecking=no']
+		args = ['-o', 'StrictHostKeyChecking=accept-new']
 		if target_host.ssh_gateway and target_host.ssh_gateway_domain != self.domain:
 			args += ['-o', 'ProxyJump={}'.format(target_host.ssh_gateway_domain)]
 		return args
@@ -156,15 +156,16 @@ class Host:
 		the SSH user — inside the container ssh runs as root, so it cannot rely on
 		the implicit lucos-backups OS user that a host-side ssh would default to.
 
-		StrictHostKeyChecking=no is set here as parity with the host-side path:
-		_outbound_ssh_args (used by the existing scp/runOnRemote to aurora) already
-		sets it, so the whole cross-host backup SSH path runs this way — known keys
-		are verified, unknown keys are accepted on first use. The container has no
-		known_hosts of its own, so rsyncVolumeSnapshot mounts the host user's
-		known_hosts (SSH_KNOWN_HOSTS) into it; without that the ProxyJump hop fails
-		host-key verification, because StrictHostKeyChecking=no does not propagate
-		to the jump connection (#327).'''
-		args = ['ssh', '-o', 'StrictHostKeyChecking=no']
+		StrictHostKeyChecking=accept-new is set here as parity with the host-side
+		path: _outbound_ssh_args (used by the existing scp/runOnRemote to aurora)
+		already sets it, so the whole cross-host backup SSH path runs this way —
+		known keys are verified, genuinely new keys are accepted on first use (TOFU),
+		and a *changed* key is rejected with an error rather than accepted silently
+		(#332). The container has no known_hosts of its own, so rsyncVolumeSnapshot
+		mounts the host user's known_hosts (SSH_KNOWN_HOSTS) into it; without that
+		the ProxyJump hop fails host-key verification, because accept-new does not
+		propagate to the jump connection (#327).'''
+		args = ['ssh', '-o', 'StrictHostKeyChecking=accept-new']
 		if target_host.ssh_gateway and target_host.ssh_gateway_domain != self.domain:
 			args += ['-o', 'ProxyJump={}@{}'.format(SSH_USER, target_host.ssh_gateway_domain)]
 		return ' '.join(args)
