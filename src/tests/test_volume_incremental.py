@@ -233,7 +233,7 @@ class TestRsyncVolumeSnapshot:
 
     def test_rsync_mounts_host_known_hosts_for_hostkey_verification(self):
         # Regression test for #327: the in-container (root) ssh has no known_hosts
-        # of its own, and StrictHostKeyChecking=no does NOT propagate to the
+        # of its own, and StrictHostKeyChecking=accept-new does NOT propagate to the
         # ProxyJump hop — so without the host user's known_hosts mounted in, the
         # jump to the gateway fails host-key verification. Mount must be read-only.
         self.avalon.connection.run.side_effect = self._run_factory()

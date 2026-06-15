@@ -330,10 +330,10 @@ class TestHostOutboundSSH:
 		sys.modules.pop("classes.host", None)
 
 	def test_outbound_ssh_args_no_gateway(self):
-		"""_outbound_ssh_args returns only StrictHostKeyChecking=no when target has no gateway."""
+		"""_outbound_ssh_args returns only StrictHostKeyChecking=accept-new when target has no gateway."""
 		args = self.avalon._outbound_ssh_args(self.avalon)
 		assert '-o' in args
-		assert 'StrictHostKeyChecking=no' in args
+		assert 'StrictHostKeyChecking=accept-new' in args
 		assert not any('ProxyJump' in a for a in args)
 
 	def test_outbound_ssh_args_with_gateway(self):
@@ -363,7 +363,7 @@ class TestHostOutboundSSH:
 		xwing = Host("xwing")
 		args = xwing._outbound_ssh_args(self.aurora)
 		# StrictHostKeyChecking should still be present.
-		assert 'StrictHostKeyChecking=no' in args
+		assert 'StrictHostKeyChecking=accept-new' in args
 		# ProxyJump must NOT be present.
 		assert not any('ProxyJump' in a for a in args), \
 			"ProxyJump must be omitted when source IS the target's ssh_gateway"

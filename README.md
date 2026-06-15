@@ -15,6 +15,32 @@ The following scripts are to be run manually by a privileged user:
 * __restore-volume.sh \<volume_name\> \<archive_path\>__ - restores a Docker volume from a backup archive (or snapshot directory) on a production host. Run on the host where the volume lives; see [docs/restore-runbook.md](docs/restore-runbook.md) for full instructions.
 * __scripts/seed-volume.py \<volume_name\>__ - runs the first (full) snapshot of an `incremental`-strategy volume off the nightly cron critical path. Run inside the container: `pipenv run python -m scripts.seed-volume <volume_name>`. See [docs/adr/0002-incremental-photos-backup.md](docs/adr/0002-incremental-photos-backup.md).
 
+## Refreshing a host key (after a server rebuild)
+
+The backup SSH paths use `StrictHostKeyChecking=accept-new`, which accepts a genuinely new host on first contact but **rejects a changed host key with an error**. A changed key happens when a backup source or storage host is rebuilt or reprovisioned. This is intentional — it surfaces the change visibly rather than silently trusting a key that no longer matches.
+
+**What you'll see in the backup log:**
+```
+WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
+Host key verification failed.
+```
+
+**How to fix:** on each backup *source* host (the host that runs the backup container), update the `lucos-backups` user's `known_hosts` for the rebuilt host. Connect to the source host as a user with sudo, then run:
+
+```bash
+# Remove the stale entry
+sudo -u lucos-backups ssh-keygen -R <rebuilt-host.domain> -f /home/lucos-backups/.ssh/known_hosts
+
+# Record the new key
+sudo -u lucos-backups sh -c 'ssh-keyscan <rebuilt-host.domain> >> ~/.ssh/known_hosts'
+```
+
+Replace `<rebuilt-host.domain>` with the hostname as it appears in the `domain` field of the backup config.
+
+> **ProxyJump note:** if the rebuilt host is only reachable via a jump gateway (e.g. it lives on an internal LAN), run the `ssh-keyscan` from the gateway host instead — the rebuilt host is not directly reachable for a keyscan from the source host.
+
+The next backup run after the `known_hosts` update will succeed without error.
+
 ## Backup strategies
 
 Each volume's backup mechanism is chosen per-volume via the `backup_strategy` field in [lucos_configy](https://github.com/lucas42/lucos_configy)'s `volumes.yaml`:
