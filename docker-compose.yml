@@ -10,6 +10,7 @@ services:
       - ENVIRONMENT
       - APP_ORIGIN
       - PORT
+      - VERSION
       - SSH_PRIVATE_KEY
       - GITHUB_KEY
       - SCHEDULE_TRACKER_ENDPOINT
