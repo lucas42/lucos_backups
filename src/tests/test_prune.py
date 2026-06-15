@@ -251,6 +251,7 @@ class TestPruneScript:
 		host_good = MagicMock()
 		host_good.domain = "aurora.local"
 		host_good.getBackups.return_value = []
+		host_good.pruneStaleSnapshotPartials.return_value = 0
 
 		stubs["classes.host"].Host.getAll.return_value = [host_bad, host_good]
 
@@ -307,6 +308,7 @@ class TestPruneScript:
 		host_good = MagicMock()
 		host_good.domain = "aurora.local"
 		host_good.getBackups.return_value = []
+		host_good.pruneStaleSnapshotPartials.return_value = 0
 
 		stubs["classes.host"].Host.getAll.return_value = [host_bad, host_good]
 		mock_tracker = stubs["schedule_tracker"].updateScheduleTracker
@@ -366,3 +368,65 @@ class TestRecursivePrune:
 		cmd = host.connection.run.call_args[0][0]
 		assert "ls -d" in cmd
 		assert "rm" not in cmd
+
+
+# ---------------------------------------------------------------------------
+# prune-backups.py script — stale partial GC
+# ---------------------------------------------------------------------------
+
+class TestPruneScriptPartialGC:
+	"""prune-backups.py must call pruneStaleSnapshotPartials() on reachable hosts."""
+
+	def _get_module_and_stubs(self):
+		stubs = _stub_prune_modules()
+		module = _import_prune_script(stubs)
+		return module, stubs
+
+	def test_prune_stale_partials_called_on_reachable_host(self):
+		"""pruneStaleSnapshotPartials() is invoked on every host that responded to getBackups()."""
+		module, stubs = self._get_module_and_stubs()
+
+		host = MagicMock()
+		host.domain = "aurora.local"
+		host.getBackups.return_value = []
+		host.pruneStaleSnapshotPartials.return_value = 0
+
+		stubs["classes.host"].Host.getAll.return_value = [host]
+
+		module.run()
+
+		host.pruneStaleSnapshotPartials.assert_called_once()
+
+	def test_prune_stale_partials_not_called_on_unreachable_host(self):
+		"""If getBackups() raises (host unreachable), pruneStaleSnapshotPartials() is skipped."""
+		module, stubs = self._get_module_and_stubs()
+
+		host = MagicMock()
+		host.domain = "salvare.l42.eu"
+		host.getBackups.side_effect = Exception("No route to host")
+
+		stubs["classes.host"].Host.getAll.return_value = [host]
+
+		module.run()
+
+		host.pruneStaleSnapshotPartials.assert_not_called()
+
+	def test_prune_stale_partials_error_recorded_as_failure(self):
+		"""If pruneStaleSnapshotPartials() raises, schedule-tracker reports failure with host domain."""
+		module, stubs = self._get_module_and_stubs()
+
+		host = MagicMock()
+		host.domain = "aurora.local"
+		host.getBackups.return_value = []
+		host.pruneStaleSnapshotPartials.side_effect = Exception("permission denied")
+
+		stubs["classes.host"].Host.getAll.return_value = [host]
+		mock_tracker = stubs["schedule_tracker"].updateScheduleTracker
+
+		module.run()
+
+		failure_calls = [c for c in mock_tracker.call_args_list
+						 if c.kwargs.get("success") is False]
+		assert failure_calls, "Partial prune error must cause a failure tracker call"
+		message = failure_calls[0].kwargs.get("message", "")
+		assert "aurora.local" in message

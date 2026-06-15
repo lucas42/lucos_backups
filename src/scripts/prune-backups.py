@@ -31,6 +31,17 @@ def run():
 				print("\033[91m** Error pruning backup {} ** {}\033[0m".format(backup.name, error), flush=True)
 				traceback.print_exception(error)
 				failures.append("{}/{}".format(host.domain, backup.name))
+		try:
+			partialsPruned = host.pruneStaleSnapshotPartials()
+			if partialsPruned > 0:
+				print("\t{} stale partial snapshot director{} deleted".format(
+					partialsPruned, "ies" if partialsPruned != 1 else "y"
+				))
+			pruneCount += partialsPruned
+		except Exception as error:
+			print("\033[91m** Error pruning stale partials on {} ** {}\033[0m".format(host.domain, error), flush=True)
+			traceback.print_exception(error)
+			failures.append("{} (stale partial prune failed)".format(host.domain))
 		host.closeConnection()
 
 	if failures:
