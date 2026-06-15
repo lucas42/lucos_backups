@@ -371,6 +371,38 @@ class Host:
 			)
 		return backupList
 
+	def pruneStaleSnapshotPartials(self):
+		'''GC orphaned <date>.partial/ directories stored on this host.  Called
+		from the prune job.
+
+		Any <date>.partial/ whose date is strictly before today is an orphan:
+		- rsync resumes only target today's date, so a past-date .partial can
+		  never be resumed.
+		- _latest_snapshot_date already ignores .partial dirs as --link-dest
+		  bases, so orphaned partials consume disk space without contributing to
+		  backup integrity.
+		Today's .partial is preserved — it may belong to an in-progress or
+		same-day-resumable incremental run (#333).
+
+		Entries whose prefix is not a valid ISO date are skipped.'''
+		today = datetime.today().strftime('%Y-%m-%d')
+		count = 0
+		for path in self.shell.find_snapshot_dirs():
+			name = path.rstrip('/').rsplit('/', 1)[-1]
+			if not name.endswith('.partial'):
+				continue
+			date_part = name[:-len('.partial')]
+			if date_part >= today:
+				continue  # today's partial (in-progress or resumable) — preserve
+			try:
+				datetime.strptime(date_part, '%Y-%m-%d')
+			except ValueError:
+				continue  # non-date prefix — skip
+			print("Removing stale partial backup directory: {}".format(path), flush=True)
+			self.connection.run('rm -rf "{}"'.format(path), hide=False)
+			count += 1
+		return count
+
 	def getData(self):
 		try:
 			return {

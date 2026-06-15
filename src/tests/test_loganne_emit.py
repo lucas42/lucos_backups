@@ -41,6 +41,7 @@ def _make_host_stub(prune_count=1):
     host = MagicMock()
     host.domain = "test.example.com"
     host.getBackups.return_value = [backup]
+    host.pruneStaleSnapshotPartials.return_value = 0
     host.closeConnection.return_value = None
     return host
 

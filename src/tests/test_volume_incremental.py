@@ -13,6 +13,7 @@ No real SSH connections are made — connection/SFTP are fully mocked.
 import json
 import sys
 import pytest
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 
@@ -346,3 +347,101 @@ class TestRsyncVolumeSnapshot:
         assert b.recursive is True
         # .partial is skipped (not a parseable date); two real snapshots remain
         assert len(b.instances) == 2
+
+
+# ---------------------------------------------------------------------------
+# Host.pruneStaleSnapshotPartials
+# ---------------------------------------------------------------------------
+
+class TestPruneStaleSnapshotPartials:
+    """pruneStaleSnapshotPartials() removes past-date .partial dirs and
+    leaves today's .partial (in-progress or same-day-resumable) untouched."""
+
+    FAKE_HOSTS_CONFIG = {
+        "aurora": {
+            "domain": "aurora.local",
+            "is_storage_only": True,
+            "backup_root": "/share/backups/",
+        },
+    }
+
+    def setup_method(self):
+        sys.modules.setdefault("utils", MagicMock())
+        sys.modules["utils.config"] = MagicMock()
+        fake_fabric = MagicMock()
+        fake_fabric.Connection = MagicMock(side_effect=lambda **kw: MagicMock())
+        sys.modules["fabric"] = fake_fabric
+        sys.modules.setdefault("invoke", MagicMock())
+
+        import importlib
+        import classes.host
+        importlib.reload(classes.host)
+
+        self.host_patcher = patch("classes.host.getHostsConfig", return_value=self.FAKE_HOSTS_CONFIG)
+        self.host_patcher.start()
+
+        from classes.host import Host
+        self.aurora = Host("aurora")
+        # Replace shell with a mock so find_snapshot_dirs output is controllable
+        self.aurora.shell = MagicMock()
+
+    def teardown_method(self):
+        self.host_patcher.stop()
+        sys.modules.pop("utils.config", None)
+        sys.modules.pop("utils", None)
+        sys.modules.pop("fabric", None)
+        sys.modules.pop("invoke", None)
+        sys.modules.pop("classes.host", None)
+
+    def _past_partial(self, days_ago=3):
+        date = (datetime.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+        return "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/{}.partial".format(date)
+
+    def _today_partial(self):
+        date = datetime.today().strftime('%Y-%m-%d')
+        return "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/{}.partial".format(date)
+
+    def test_past_date_partial_is_removed(self):
+        path = self._past_partial()
+        self.aurora.shell.find_snapshot_dirs.return_value = [path]
+        count = self.aurora.pruneStaleSnapshotPartials()
+        self.aurora.connection.run.assert_called_once()
+        cmd = self.aurora.connection.run.call_args[0][0]
+        assert "rm -rf" in cmd
+        assert path in cmd
+        assert count == 1
+
+    def test_todays_partial_is_preserved(self):
+        path = self._today_partial()
+        self.aurora.shell.find_snapshot_dirs.return_value = [path]
+        count = self.aurora.pruneStaleSnapshotPartials()
+        self.aurora.connection.run.assert_not_called()
+        assert count == 0
+
+    def test_non_partial_dated_dir_is_skipped(self):
+        past = (datetime.today() - timedelta(days=3)).strftime('%Y-%m-%d')
+        path = "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/{}".format(past)
+        self.aurora.shell.find_snapshot_dirs.return_value = [path]
+        count = self.aurora.pruneStaleSnapshotPartials()
+        self.aurora.connection.run.assert_not_called()
+        assert count == 0
+
+    def test_non_date_prefix_partial_is_skipped(self):
+        path = "/share/backups/host/avalon/volume-snapshots/lucos_photos_photos/notadate.partial"
+        self.aurora.shell.find_snapshot_dirs.return_value = [path]
+        count = self.aurora.pruneStaleSnapshotPartials()
+        self.aurora.connection.run.assert_not_called()
+        assert count == 0
+
+    def test_empty_snapshot_list_returns_zero(self):
+        self.aurora.shell.find_snapshot_dirs.return_value = []
+        count = self.aurora.pruneStaleSnapshotPartials()
+        self.aurora.connection.run.assert_not_called()
+        assert count == 0
+
+    def test_multiple_stale_partials_all_removed(self):
+        paths = [self._past_partial(days_ago=d) for d in (1, 2, 5)]
+        self.aurora.shell.find_snapshot_dirs.return_value = paths
+        count = self.aurora.pruneStaleSnapshotPartials()
+        assert self.aurora.connection.run.call_count == 3
+        assert count == 3
