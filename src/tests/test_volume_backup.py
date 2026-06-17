@@ -25,6 +25,11 @@ FAKE_VOLUMES_CONFIG = {
         "description": "Notes data",
         "recreate_effort": "small",
     },
+    "lucos_aithne_credential_store": {
+        "description": "SQLite credential store",
+        "recreate_effort": "small",
+        "backup_strategy": "sqlite",
+    },
 }
 
 FAKE_HOSTS_CONFIG = {
@@ -341,3 +346,87 @@ class TestBackupToAll:
         captured = capsys.readouterr()
         assert "Failed to copy" in captured.out
         assert "lucos_notes_data" in captured.out
+
+
+class TestSqliteStrategy:
+    """The "sqlite" backup_strategy archives via the online .backup helper rather
+    than a raw live-file tar (lucos_backups#344)."""
+
+    def setup_method(self):
+        fake_config = MagicMock()
+        fake_config.getVolumesConfig = MagicMock(return_value=FAKE_VOLUMES_CONFIG)
+        fake_config.getHostsConfig = MagicMock(return_value=FAKE_HOSTS_CONFIG)
+        sys.modules.setdefault("utils", MagicMock())
+        sys.modules["utils.config"] = fake_config
+
+        import importlib
+        import classes.volume
+        importlib.reload(classes.volume)
+
+        self.vol_patcher = patch("classes.volume.getVolumesConfig", return_value=FAKE_VOLUMES_CONFIG)
+        self.hosts_patcher = patch("classes.volume.getHostsConfig", return_value=FAKE_HOSTS_CONFIG)
+        self.vol_patcher.start()
+        self.hosts_patcher.start()
+
+        from classes.volume import Volume
+        self.Volume = Volume
+
+        # archiveLocally()'s sqlite branch does `from classes.host import backup_image_ref`.
+        # Inject a fake classes.host so the import doesn't pull in fabric (not in CI tests).
+        fake_host_module = type(sys)("classes.host")
+        fake_host_module.backup_image_ref = lambda: "lucas42/lucos_backups:testver"
+        sys.modules["classes.host"] = fake_host_module
+
+    def teardown_method(self):
+        self.vol_patcher.stop()
+        self.hosts_patcher.stop()
+        sys.modules.pop("utils.config", None)
+        sys.modules.pop("classes.host", None)
+
+    def _make_volume(self, volume_name, labels):
+        raw = make_raw_json(volume_name, labels=labels)
+        host = make_host("avalon")
+        host.connection = MagicMock()
+        host.backup_root = "/srv/backups/"
+        return self.Volume(host, raw)
+
+    def test_sqlite_strategy_is_parsed(self):
+        vol = self._make_volume("lucos_aithne_credential_store", labels="com.docker.compose.project=lucos_aithne")
+        assert vol.backup_strategy == "sqlite"
+
+    def test_sqlite_archive_uses_helper_image_and_script(self):
+        """The sqlite archive runs the versioned lucos_backups image against the
+        sqlite-archive.sh helper — not the raw `alpine tar` of the live volume."""
+        vol = self._make_volume("lucos_aithne_credential_store", labels="com.docker.compose.project=lucos_aithne")
+        (archive_path, _date) = vol.archiveLocally()
+
+        docker_run_call = vol.host.connection.run.call_args_list[1]
+        cmd = docker_run_call[0][0]
+        assert "lucas42/lucos_backups:testver" in cmd
+        assert "scripts/sqlite-archive.sh" in cmd
+        assert "lucos_aithne_credential_store:/raw-data" in cmd
+        assert archive_path in cmd
+        # The whole point: not a raw tar of the live volume.
+        assert "alpine:latest tar" not in cmd
+        assert docker_run_call[1].get("timeout") == 600
+
+    def test_full_snapshot_still_uses_raw_tar(self):
+        """Regression: a default-strategy volume keeps the raw `alpine tar` path."""
+        vol = self._make_volume("lucos_notes_data", labels="com.docker.compose.project=lucos_notes")
+        assert vol.backup_strategy == "full-snapshot"
+        vol.archiveLocally()
+
+        cmd = vol.host.connection.run.call_args_list[1][0][0]
+        assert "alpine:latest tar" in cmd
+        assert "sqlite-archive.sh" not in cmd
+
+    def test_backup_routes_sqlite_to_backup_to_all(self):
+        """backup() sends the sqlite strategy down the full-snapshot copy path
+        (backupToAll), not the incremental rsync path."""
+        vol = self._make_volume("lucos_aithne_credential_store", labels="com.docker.compose.project=lucos_aithne")
+        vol.backupToAll = MagicMock()
+        vol.backupIncremental = MagicMock()
+
+        assert vol.backup() == 1
+        vol.backupToAll.assert_called_once()
+        vol.backupIncremental.assert_not_called()

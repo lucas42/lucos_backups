@@ -24,6 +24,8 @@ class Volume:
 			skip_backup_on_hosts = getVolumesConfig()[self.name].get("skip_backup_on_hosts", [])
 			# Absent / null / "full-snapshot" → the default daily full tar+scp.
 			# "incremental" → rsync --link-dest hardlink-rotated snapshots (ADR-0002).
+			# "sqlite" → online .backup snapshot of each SQLite DB, then tar+scp the
+			#            snapshot — safe for live SQLite stores (lucos_backups#344).
 			backup_strategy = getVolumesConfig()[self.name].get("backup_strategy") or "full-snapshot"
 		else:
 			known = False
@@ -69,17 +71,36 @@ class Volume:
 
 	# Creates a compressed tarball of the volume and saves it on the local drive
 	# NB: will replace any existing tarball for a volume of the same name
+	#
+	# For the "sqlite" strategy the live volume is not tarred directly; instead the
+	# versioned lucos_backups image (which ships the sqlite CLI) is run as a helper
+	# container against the volume, taking a transactionally-consistent online
+	# .backup snapshot of each SQLite DB before archiving (lucos_backups#344). Same
+	# source-side helper-container delivery pattern as the incremental strategy's
+	# rsync. The resulting tarball has the same shape as the raw-tar one, so the
+	# scp/retention/restore paths are unchanged.
 	def archiveLocally(self):
 		print("Creating local archive of "+str(self), flush=True)
 		archiveDirectory = self.host.backup_root + "local/volume"
 		date = datetime.today().strftime('%Y-%m-%d')
 		archivePath = "{archive_directory}/{volume_name}.{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
 		self.host.connection.run("mkdir -p {}".format(archiveDirectory), timeout=3)
-		self.host.connection.run("docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind alpine:latest tar -C /raw-data -czf {archive_path} .".format(
-			volume_name=self.name,
-			archive_directory=archiveDirectory,
-			archive_path=archivePath,
-		), timeout=600)
+		if self.backup_strategy == "sqlite":
+			# Local import to avoid a circular import at module load (host.py imports volume.py).
+			from classes.host import backup_image_ref
+			command = "docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind {image} sh /usr/src/app/scripts/sqlite-archive.sh {archive_path}".format(
+				volume_name=self.name,
+				archive_directory=archiveDirectory,
+				image=backup_image_ref(),
+				archive_path=archivePath,
+			)
+		else:
+			command = "docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind alpine:latest tar -C /raw-data -czf {archive_path} .".format(
+				volume_name=self.name,
+				archive_directory=archiveDirectory,
+				archive_path=archivePath,
+			)
+		self.host.connection.run(command, timeout=600)
 		return (archivePath, date)
 
 	# Backs up the volume to all available hosts (except the one the volume is on)
