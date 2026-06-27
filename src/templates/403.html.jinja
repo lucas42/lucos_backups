@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head>
-		<title>Backups | Starting up</title>
+		<title>Backups | Access Denied</title>
 		<meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<link rel="icon" href="/icon.png" />
@@ -10,11 +10,11 @@
 		<link rel="manifest" href="/manifest.json" />
 	</head>
 	<body>
-		<lucos-navbar bg-colour="#002" aithne-origin="{{ AITHNE_ORIGIN }}">Backups</lucos-navbar>
+		<lucos-navbar bg-colour="#002" aithne-origin="{{ AITHNE_ORIGIN }}">Backups | Access Denied</lucos-navbar>
 		<main>
 			<section class="failing">
-				<h2>Starting up</h2>
-				<div class="error">Backup tracking data is being fetched — please try again shortly.</div>
+				<h2>Access Denied</h2>
+				<div class="error">This action requires the <code>{{ required_scope }}</code> scope.</div>
 			</section>
 		</main>
 		<script src="/lucos_navbar.js" type="text/javascript"></script>

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "e35024e1115d1dd8aecf41439d912b5a9ec24589c6a4a4160b9d739de26a70f4"
+            "sha256": "a109316ccb02b1101dd35deef9d1e6604e30adb286344b7f311704b595ee5eb6"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -365,7 +365,6 @@
                 "sha256:f89660a348f4f78a92366240a61404e337586ef7f5909a2fef59ca88ef505493",
                 "sha256:fc1e275c2f1d97b1a6450b8b0ea3ebfa6e087a611c2b26cb2404d48588abab7b"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.9' and python_full_version not in '3.9.0, 3.9.1'",
             "version": "==49.0.0"
         },
@@ -546,6 +545,17 @@
             ],
             "markers": "python_version >= '3.10'",
             "version": "==3.0"
+        },
+        "pyjwt": {
+            "extras": [
+                "cryptography"
+            ],
+            "hashes": [
+                "sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423",
+                "sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==2.13.0"
         },
         "pynacl": {
             "hashes": [
@@ -768,7 +778,6 @@
                 "sha256:fa81c5b5fe8cd6c41e3a798533b81288279e5fdbde2128f21071922764281c99",
                 "sha256:fb18fc51e813df0d9c98049e3bf2298a5495a648602040e21fa3c7329371159e"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==2.2.2"
         }

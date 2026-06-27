@@ -10,7 +10,7 @@
 		<link rel="manifest" href="/manifest.json" />
 	</head>
 	<body>
-		<lucos-navbar bg-colour="#002">Backups | Summary</lucos-navbar>
+		<lucos-navbar bg-colour="#002" aithne-origin="{{ AITHNE_ORIGIN }}">Backups | Summary</lucos-navbar>
 		<main>
 			{% for host in hostsFailedTracking: %}
 				<section class="host failing">
