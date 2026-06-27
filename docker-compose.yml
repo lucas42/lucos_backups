@@ -4,7 +4,12 @@ services:
     container_name: lucos_backups
     image: lucas42/lucos_backups:${VERSION:-latest}
     ports:
-      - $PORT:$PORT
+      # Publish on IPv4 only. enable_ipv6 (below) is for the outbound path to
+      # salvare's global IPv6; without an explicit host IP Docker would also
+      # publish [::]:$PORT, but the server binds IPv4-only — so IPv6 clients
+      # (e.g. localhost -> ::1) get accepted-then-reset, which blocks fallback
+      # to 127.0.0.1. See lucas42/lucos_backups#355.
+      - "0.0.0.0:$PORT:$PORT"
     environment:
       - SYSTEM
       - ENVIRONMENT
