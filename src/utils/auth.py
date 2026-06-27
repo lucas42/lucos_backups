@@ -6,9 +6,6 @@ Implements the three-branch pattern from the estate consumer migration guide
   1. Valid aithne_session token AND backups:use scope → proceed.
   2. Valid token, missing backups:use → ForbiddenException (styled 403).
   3. No token or invalid/expired token → AuthException (303 → aithne login).
-
-CSRF mitigation (C5): checkCSRF() validates Origin/Referer against APP_ORIGIN
-or *.l42.eu for cookie-authenticated state-mutating POST endpoints.
 """
 
 import logging
@@ -58,11 +55,6 @@ class ForbiddenException(Exception):
 	def __init__(self, required_scope):
 		self.required_scope = required_scope
 		super().__init__(f"Missing required scope: {required_scope}")
-
-
-class CSRFException(Exception):
-	"""Request failed the CSRF origin check."""
-	pass
 
 
 # ---------------------------------------------------------------------------
@@ -227,42 +219,6 @@ def checkAuth(handler):
 		raise ForbiddenException(_REQUIRED_SCOPE)
 
 	return (principal_class, sub, scopes)
-
-
-def checkCSRF(handler):
-	"""Validate CSRF protection for state-mutating POST endpoints.
-
-	The aithne_session cookie is SameSite=None, so the browser attaches it to
-	all cross-origin requests — including CSRF-triggered form POSTs.  This
-	function defends against that by verifying the Origin header (or Referer
-	fallback) comes from APP_ORIGIN or a *.l42.eu domain.
-
-	Raises CSRFException if the origin check fails.
-	"""
-	origin = handler.headers.get('Origin') or ''
-	if not origin:
-		# Fall back to Referer host if Origin is absent.
-		referer = handler.headers.get('Referer') or ''
-		if not referer:
-			raise CSRFException("Missing Origin and Referer headers on mutating request")
-		parsed = urllib.parse.urlparse(referer)
-		origin = f"{parsed.scheme}://{parsed.netloc}"
-
-	# Check against our own APP_ORIGIN first.
-	app_origin = os.environ.get("APP_ORIGIN", "")
-	if app_origin:
-		app_parsed = urllib.parse.urlparse(app_origin)
-		expected = f"{app_parsed.scheme}://{app_parsed.netloc}"
-		if origin == expected:
-			return
-
-	# Also accept any *.l42.eu origin (the estate boundary).
-	parsed = urllib.parse.urlparse(origin)
-	host = parsed.hostname or ''
-	if host.endswith('.l42.eu') or host == 'l42.eu':
-		return
-
-	raise CSRFException(f"Request from unexpected origin: {origin!r}")
 
 
 def authenticate(handler):

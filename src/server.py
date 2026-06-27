@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from http.cookies import SimpleCookie
 from utils.tracking import getAllInfo, fetchAllInfo, TrackingNotReadyError
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from utils.auth import checkAuth, authenticate, AuthException, ForbiddenException, CSRFException
+from utils.auth import checkAuth, authenticate, AuthException, ForbiddenException
 from utils.config import fetchConfig
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")
@@ -90,11 +90,6 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Content-type", "text/html")
 			self.end_headers()
 			self.wfile.write(bytes(output, "utf-8"))
-		except CSRFException:
-			self.send_response(403)
-			self.send_header("Content-type", "text/plain")
-			self.end_headers()
-			self.wfile.write(bytes("Forbidden: CSRF check failed\n", "utf-8"))
 		except TrackingNotReadyError:
 			aithne_origin = os.environ.get("AITHNE_ORIGIN", "https://aithne.l42.eu")
 			output = templateEnv.get_template("startup.html.jinja").render({'AITHNE_ORIGIN': aithne_origin})
@@ -262,10 +257,6 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Allow", "POST")
 			self.end_headers()
 			return
-		checkAuth(self)
-		# No CSRF check here: these endpoints are called by machine cronjobs which
-		# don't send Origin/Referer headers.  The worst a CSRF-triggered refresh
-		# would do is pull updated tracking data early — low-risk.
 		try:
 			info = getAllInfo()
 			age = (datetime.datetime.now(datetime.timezone.utc) - info["update_time"]).total_seconds()
@@ -293,10 +284,6 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.send_header("Allow", "POST")
 			self.end_headers()
 			return
-		checkAuth(self)
-		# No CSRF check here: these endpoints are called by machine cronjobs which
-		# don't send Origin/Referer headers.  The worst a CSRF-triggered refresh
-		# would do is pull updated config data early — low-risk.
 		if _last_config_refresh is not None:
 			age = (datetime.datetime.now(datetime.timezone.utc) - _last_config_refresh).total_seconds()
 			if age < MIN_REFRESH_INTERVAL_SECONDS:

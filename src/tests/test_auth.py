@@ -1,12 +1,10 @@
 """
-Tests for utils/auth.py — aithne JWKS/JWT authentication and CSRF checks.
+Tests for utils/auth.py — aithne JWKS/JWT authentication.
 
 Tests the three-branch auth pattern (C2 from the migration guide):
   1. Valid token + backups:use → checkAuth returns successfully.
   2. Valid token, missing backups:use → ForbiddenException.
   3. No token or invalid token → AuthException.
-
-CSRF (C5): checkCSRF validates Origin/Referer against APP_ORIGIN / *.l42.eu.
 """
 import os
 import sys
@@ -24,9 +22,7 @@ import utils.auth as auth_module
 from utils.auth import (
 	AuthException,
 	ForbiddenException,
-	CSRFException,
 	checkAuth,
-	checkCSRF,
 	authenticate,
 	_set_jwks_client,
 )
@@ -247,56 +243,6 @@ class TestCheckAuth:
 			with patch.dict('os.environ', env, clear=True):
 				with pytest.raises(ForbiddenException):
 					checkAuth(handler)
-
-
-# ---------------------------------------------------------------------------
-# checkCSRF
-# ---------------------------------------------------------------------------
-
-class TestCheckCSRF:
-
-	def test_origin_matches_app_origin_passes(self):
-		handler = _make_handler(headers={'Origin': 'https://backups.l42.eu'})
-		with patch.dict('os.environ', {'APP_ORIGIN': 'https://backups.l42.eu'}):
-			checkCSRF(handler)  # must not raise
-
-	def test_origin_matches_l42eu_subdomain_passes(self):
-		handler = _make_handler(headers={'Origin': 'https://aithne.l42.eu'})
-		with patch.dict('os.environ', {'APP_ORIGIN': 'https://backups.l42.eu'}):
-			checkCSRF(handler)
-
-	def test_bare_l42eu_passes(self):
-		handler = _make_handler(headers={'Origin': 'https://l42.eu'})
-		checkCSRF(handler)
-
-	def test_external_origin_raises_csrf_exception(self):
-		handler = _make_handler(headers={'Origin': 'https://attacker.com'})
-		with patch.dict('os.environ', {'APP_ORIGIN': 'https://backups.l42.eu'}):
-			with pytest.raises(CSRFException):
-				checkCSRF(handler)
-
-	def test_missing_origin_and_referer_raises_csrf_exception(self):
-		handler = _make_handler(headers={})
-		with pytest.raises(CSRFException):
-			checkCSRF(handler)
-
-	def test_referer_fallback_from_own_origin_passes(self):
-		"""When Origin is absent, Referer from APP_ORIGIN should pass."""
-		handler = _make_handler(headers={'Referer': 'https://backups.l42.eu/some/page'})
-		with patch.dict('os.environ', {'APP_ORIGIN': 'https://backups.l42.eu'}):
-			checkCSRF(handler)
-
-	def test_referer_fallback_from_external_raises(self):
-		handler = _make_handler(headers={'Referer': 'https://evil.example.com/'})
-		with patch.dict('os.environ', {'APP_ORIGIN': 'https://backups.l42.eu'}):
-			with pytest.raises(CSRFException):
-				checkCSRF(handler)
-
-	def test_origin_with_port_from_app_origin_passes(self):
-		"""APP_ORIGIN in dev includes port — Origin header should match."""
-		handler = _make_handler(headers={'Origin': 'http://localhost:8083'})
-		with patch.dict('os.environ', {'APP_ORIGIN': 'http://localhost:8083'}):
-			checkCSRF(handler)
 
 
 # ---------------------------------------------------------------------------
