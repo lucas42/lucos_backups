@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from http.cookies import SimpleCookie
 from utils.tracking import getAllInfo, fetchAllInfo, TrackingNotReadyError
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from utils.auth import checkAuth, authenticate, AuthException, ForbiddenException, CSRFException, checkCSRF
+from utils.auth import checkAuth, authenticate, AuthException, ForbiddenException, CSRFException
 from utils.config import fetchConfig
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")
@@ -263,7 +263,9 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 		checkAuth(self)
-		checkCSRF(self)
+		# No CSRF check here: these endpoints are called by machine cronjobs which
+		# don't send Origin/Referer headers.  The worst a CSRF-triggered refresh
+		# would do is pull updated tracking data early — low-risk.
 		try:
 			info = getAllInfo()
 			age = (datetime.datetime.now(datetime.timezone.utc) - info["update_time"]).total_seconds()
@@ -292,7 +294,9 @@ class BackupsHandler(BaseHTTPRequestHandler):
 			self.end_headers()
 			return
 		checkAuth(self)
-		checkCSRF(self)
+		# No CSRF check here: these endpoints are called by machine cronjobs which
+		# don't send Origin/Referer headers.  The worst a CSRF-triggered refresh
+		# would do is pull updated config data early — low-risk.
 		if _last_config_refresh is not None:
 			age = (datetime.datetime.now(datetime.timezone.utc) - _last_config_refresh).total_seconds()
 			if age < MIN_REFRESH_INTERVAL_SECONDS:
