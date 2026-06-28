@@ -20,6 +20,8 @@ services:
       - GITHUB_KEY
       - SCHEDULE_TRACKER_ENDPOINT
       - LOGANNE_ENDPOINT
+      - AITHNE_ORIGIN
+      - AITHNE_JWKS_URL
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${PORT}/_info"]
       interval: 10s
