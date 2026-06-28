@@ -224,19 +224,15 @@ def checkAuth(handler):
 def authenticate(handler):
 	"""Send a 303 redirect to the aithne login page.
 
-	Builds a full absolute same-origin 'next' URL from the request's
-	X-Forwarded-Proto, Host, and path — never reflects a caller-supplied ?next=
-	(open-redirect guard).
+	Uses APP_ORIGIN (env var, provided by lucos_creds for every service) as the
+	redirect base — no attacker-controlled data in the taint path, no dependency
+	on proxy header forwarding behaviour.
 	"""
-	proto = handler.headers.get('X-Forwarded-Proto', 'http')
-	host = handler.headers.get('Host', '')
+	app_origin = os.environ.get("APP_ORIGIN", "")
 	path = handler.parsed.path
 	query = handler.parsed.query
-	if query:
-		full_path = f"{path}?{query}"
-	else:
-		full_path = path
-	next_url = f"{proto}://{host}{full_path}"
+	full_path = f"{path}?{query}" if query else path
+	next_url = f"{app_origin}{full_path}"
 	aithne_origin = os.environ.get("AITHNE_ORIGIN", "https://aithne.l42.eu")
 	login_url = f"{aithne_origin}/auth/login?" + urllib.parse.urlencode({'next': next_url})
 	handler.send_response(303)

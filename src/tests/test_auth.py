@@ -9,6 +9,7 @@ Tests the three-branch auth pattern (C2 from the migration guide):
 import os
 import sys
 import time
+import urllib.parse
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -252,45 +253,35 @@ class TestCheckAuth:
 class TestAuthenticate:
 
 	def test_redirects_to_aithne_login(self):
-		handler = _make_handler(
-			headers={
-				'X-Forwarded-Proto': 'https',
-				'Host': 'backups.l42.eu',
-			},
-			path='/',
-		)
-		with patch.dict('os.environ', {'AITHNE_ORIGIN': 'https://aithne.l42.eu'}):
+		handler = _make_handler(path='/')
+		with patch.dict('os.environ', {
+			'APP_ORIGIN': 'https://backups.l42.eu',
+			'AITHNE_ORIGIN': 'https://aithne.l42.eu',
+		}):
 			authenticate(handler)
 
 		assert handler._response_code == 303
 		assert 'aithne.l42.eu/auth/login' in handler._response_location
 
 	def test_next_url_is_full_absolute_url(self):
-		handler = _make_handler(
-			headers={
-				'X-Forwarded-Proto': 'https',
-				'Host': 'backups.l42.eu',
-			},
-			path='/hosts/avalon',
-		)
-		with patch.dict('os.environ', {'AITHNE_ORIGIN': 'https://aithne.l42.eu'}):
+		handler = _make_handler(path='/hosts/avalon')
+		with patch.dict('os.environ', {
+			'APP_ORIGIN': 'https://backups.l42.eu',
+			'AITHNE_ORIGIN': 'https://aithne.l42.eu',
+		}):
 			authenticate(handler)
 
 		location = handler._response_location
-		# next= must be URL-encoded and contain the full host
+		# next= must be URL-encoded and contain the full APP_ORIGIN host
 		assert 'backups.l42.eu' in location
 		assert 'next=' in location
 
 	def test_next_url_includes_query_string(self):
-		handler = _make_handler(
-			headers={
-				'X-Forwarded-Proto': 'https',
-				'Host': 'backups.l42.eu',
-			},
-			path='/hosts/avalon',
-			query='debug=true',
-		)
-		with patch.dict('os.environ', {'AITHNE_ORIGIN': 'https://aithne.l42.eu'}):
+		handler = _make_handler(path='/hosts/avalon', query='debug=true')
+		with patch.dict('os.environ', {
+			'APP_ORIGIN': 'https://backups.l42.eu',
+			'AITHNE_ORIGIN': 'https://aithne.l42.eu',
+		}):
 			authenticate(handler)
 
 		location = handler._response_location
@@ -298,11 +289,25 @@ class TestAuthenticate:
 		assert 'debug' in location
 
 	def test_uses_aithne_origin_env_var(self):
-		handler = _make_handler(
-			headers={'X-Forwarded-Proto': 'https', 'Host': 'backups.l42.eu'},
-			path='/',
-		)
-		with patch.dict('os.environ', {'AITHNE_ORIGIN': 'http://localhost:8039'}):
+		handler = _make_handler(path='/')
+		with patch.dict('os.environ', {
+			'APP_ORIGIN': 'https://backups.l42.eu',
+			'AITHNE_ORIGIN': 'http://localhost:8039',
+		}):
 			authenticate(handler)
 
 		assert handler._response_location.startswith('http://localhost:8039/auth/login')
+
+	def test_uses_app_origin_env_var_for_redirect_base(self):
+		"""next= URL must come from APP_ORIGIN, not from request headers."""
+		handler = _make_handler(path='/hosts/avalon')
+		with patch.dict('os.environ', {
+			'APP_ORIGIN': 'https://backups.l42.eu',
+			'AITHNE_ORIGIN': 'https://aithne.l42.eu',
+		}):
+			authenticate(handler)
+
+		location = handler._response_location
+		next_url = urllib.parse.unquote(location.split('next=')[1])
+		assert next_url.startswith('https://backups.l42.eu/'), \
+			f"next= must start with APP_ORIGIN, got: {next_url}"
