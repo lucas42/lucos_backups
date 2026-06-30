@@ -4,6 +4,7 @@ from classes.host import Host
 from classes.volume import Volume
 from classes.repository import Repository
 from schedule_tracker import updateScheduleTracker
+from utils.config import getVolumesConfig
 
 RETRY_DELAY_SECONDS = 5 * 60  # Retry after 5 minutes if any host fails tracking
 _retry_timer = None
@@ -83,7 +84,11 @@ def fetchAllInfo():
 			seen_backup_volume_keys.add(key)
 			if backup["source_host"] in failed_host_names:
 				continue
-			if key not in live_volume_keys:
+			if key not in live_volume_keys and backup["name"] in getVolumesConfig():
+				# Only flag if the volume is still declared in configy.
+				# A volume absent from BOTH the host AND configy is an intentional
+				# decommission (archival checklist step 2a) whose backups we
+				# deliberately retain — see lucos/docs/repo-archival.md line 143.
 				backups_without_originals.append("{}/{}".format(backup["source_host"], backup["name"]))
 		info["backupsWithoutOriginals"] = backups_without_originals
 

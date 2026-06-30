@@ -65,13 +65,23 @@ def tracking():
         t._retry_timer = None
 
 
-def run_fetch(tracking, hosts):
-    """Helper: run fetchAllInfo with the given host mocks and return latestInfo."""
+def run_fetch(tracking, hosts, configy_volumes=None):
+    """Helper: run fetchAllInfo with the given host mocks and return latestInfo.
+
+    configy_volumes: dict of {volume_name: ...} representing volumes still
+    declared in configy. Backups whose name is NOT in this dict are treated as
+    intentionally decommissioned and silently ignored (archival checklist §2a).
+    Defaults to an empty dict — pass the relevant names explicitly in tests
+    that expect a backup-without-original to be flagged.
+    """
+    if configy_volumes is None:
+        configy_volumes = {}
     tracking._retry_timer = None
     with patch.object(tracking, "Host") as mock_h, \
          patch.object(tracking, "Repository") as mock_r, \
          patch.object(tracking, "Volume") as mock_v, \
-         patch.object(tracking, "updateScheduleTracker"):
+         patch.object(tracking, "updateScheduleTracker"), \
+         patch.object(tracking, "getVolumesConfig", return_value=configy_volumes):
         mock_h.getAll.return_value = hosts
         mock_r.getAll.return_value = []
         mock_v.getMissing.return_value = []
@@ -100,15 +110,15 @@ class TestBackupsWithoutOriginals:
         assert info["backupsWithoutOriginals"] == []
 
     def test_backup_without_matching_volume_is_flagged(self, tracking):
-        """A volume backup with no matching live volume should be flagged."""
+        """A volume backup with no matching live volume should be flagged (volume still in configy)."""
         host = _make_host()
         host.getData.return_value = {
-            "volumes": [],  # volume is gone
+            "volumes": [],  # volume is gone from host
             "one_off_files": [],
             "backups": [_make_backup_data("lucos_photos_postgres_data")],
             "disk": {"used_percentage": 40},
         }
-        info = run_fetch(tracking, [host])
+        info = run_fetch(tracking, [host], configy_volumes={"lucos_photos_postgres_data": {}})
         assert "avalon/lucos_photos_postgres_data" in info["backupsWithoutOriginals"]
 
     def test_non_volume_backup_type_not_flagged(self, tracking):
@@ -150,11 +160,11 @@ class TestBackupsWithoutOriginals:
             ],
             "disk": {"used_percentage": 40},
         }
-        info = run_fetch(tracking, [host])
+        info = run_fetch(tracking, [host], configy_volumes={"lucos_photos_postgres_data": {}})
         assert info["backupsWithoutOriginals"].count("avalon/lucos_photos_postgres_data") == 1
 
     def test_multiple_missing_volumes_all_flagged(self, tracking):
-        """Multiple backed-up volumes that are all missing should all be flagged."""
+        """Multiple backed-up volumes that are all missing should all be flagged (both still in configy)."""
         host = _make_host()
         host.getData.return_value = {
             "volumes": [],
@@ -165,12 +175,15 @@ class TestBackupsWithoutOriginals:
             ],
             "disk": {"used_percentage": 40},
         }
-        info = run_fetch(tracking, [host])
+        info = run_fetch(tracking, [host], configy_volumes={
+            "lucos_photos_postgres_data": {},
+            "lucos_contacts_db_data": {},
+        })
         assert "avalon/lucos_photos_postgres_data" in info["backupsWithoutOriginals"]
         assert "avalon/lucos_contacts_db_data" in info["backupsWithoutOriginals"]
 
     def test_cross_host_backup_without_original_is_flagged(self, tracking):
-        """A cross-host backup copy for a volume gone from its source host should be flagged."""
+        """A cross-host backup copy for a volume gone from its source host should be flagged (still in configy)."""
         # xwing holds a copy of avalon's volume, but avalon no longer has that volume
         avalon = _make_host(name="avalon")
         avalon.getData.return_value = {
@@ -186,5 +199,25 @@ class TestBackupsWithoutOriginals:
             "backups": [_make_backup_data("lucos_photos_postgres_data", source_host="avalon")],
             "disk": {"used_percentage": 50},
         }
-        info = run_fetch(tracking, [avalon, xwing])
+        info = run_fetch(tracking, [avalon, xwing], configy_volumes={"lucos_photos_postgres_data": {}})
         assert "avalon/lucos_photos_postgres_data" in info["backupsWithoutOriginals"]
+
+    def test_decommissioned_volume_backup_not_flagged(self, tracking):
+        """Retained backups of a decommissioned volume should not be flagged.
+
+        When a volume is removed from both the host AND configy (archival
+        checklist step 2a), it's an intentional decommission. We keep the
+        backups (storage is cheap, regret is expensive) but the check must stay
+        silent — otherwise a correctly-decommissioned system permanently parks
+        the check in a red state that everyone learns to ignore.
+        """
+        host = _make_host()
+        host.getData.return_value = {
+            "volumes": [],  # volume gone from host (decommissioned)
+            "one_off_files": [],
+            "backups": [_make_backup_data("lucos_authentication_config")],
+            "disk": {"used_percentage": 40},
+        }
+        # configy_volumes is empty — volume also absent from configy = intentional decommission
+        info = run_fetch(tracking, [host])
+        assert "avalon/lucos_authentication_config" not in info["backupsWithoutOriginals"]

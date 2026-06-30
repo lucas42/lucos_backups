@@ -158,7 +158,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 					"failThreshold": 5,
 				},
 				"backup-without-original": {
-					"techDetail": "Whether any backups exist for volumes that are no longer present on their source host",
+					"techDetail": "Whether any backups exist for volumes that are no longer present on their source host but are still declared in configy (indicating an unexpected deletion rather than a deliberate decommission — decommissioned volumes are intentionally retained in backups and not flagged)",
 					"ok": (len(data["backupsWithoutOriginals"]) == 0),
 					"debug": "Backups without originals: "+", ".join(
 						format_backup_without_original(bwo, data["backups"])
