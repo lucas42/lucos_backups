@@ -45,6 +45,10 @@ Where backups live depends on the volume's `backup_strategy` (set per-volume in 
 
 Choose the most recent archive from a date before the data loss occurred. Prefer archives from the originating host where available — they're fresher.
 
+### SQLite volumes (`backup_strategy: sqlite` — `.tar.gz` archives)
+
+SQLite-backed volumes (e.g. `lucos_aithne_credential_store`, `lucos_creds_store`, `lucos_media_metadata_api_db`) use the `sqlite` strategy: each database is captured with SQLite's online `.backup` API before archiving, so the snapshot is transactionally consistent rather than a torn live-file copy (lucas42/lucos_backups#344). **The archive is an ordinary `.tar.gz` stored in the same paths as full-snapshot above, and restores identically** (`restore-volume.sh` / `tar -xzf`) — the only difference is how it was *produced*. After restoring, confirm the database opens cleanly with `sqlite3 <db> 'PRAGMA integrity_check;'` (should print `ok`).
+
 ### Incremental volumes (`backup_strategy: incremental` — dated snapshot directories)
 
 Incremental volumes (currently `lucos_photos_photos`) are stored as **hardlink-rotated snapshot directories** (ADR-0002), not tarballs. There is no local copy on the originating host — only the destination host:

@@ -5,11 +5,12 @@ ENV VERSION=$VERSION
 
 WORKDIR /usr/src/app
 
-# rsync is used by the incremental backup strategy (ADR-0002): this same image
-# is run as a container on the source host to perform `rsync --link-dest`
-# snapshots, so the binary ships in the versioned image rather than being
-# installed on any host.
-RUN apk add sed curl openssh-client rsync
+# rsync is used by the incremental backup strategy (ADR-0002) and sqlite by the
+# sqlite backup strategy (lucos_backups#344): this same image is run as a
+# container on the source host to perform `rsync --link-dest` snapshots and
+# online `.backup` SQLite snapshots, so the binaries ship in the versioned image
+# rather than being installed on any host.
+RUN apk add sed curl openssh-client rsync sqlite
 RUN pip install pipenv
 
 COPY src/backups.cron .
