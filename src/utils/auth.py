@@ -118,8 +118,9 @@ def _verify_aithne_token(token_str):
 	Returns (principal_class, sub, scopes) on success, or None on any failure.
 
 	Validates: ES256 algorithm pinning, iss == AITHNE_ORIGIN, aud contains
-	l42.eu, exp/iat with 30-second clock-skew leeway, required claims present,
-	principal_class is a recognised value.
+	l42.eu, exp/iat with 30-second clock-skew leeway, required claims present.
+	principal_class is read for logging only — it is not an authorisation
+	input and an absent/unrecognised value does not cause rejection (§5).
 	"""
 	# Phase 1 — resolve signing key from JWKS.
 	try:
@@ -165,11 +166,10 @@ def _verify_aithne_token(token_str):
 		logger.warning("JWT rejected: %s — %s", type(exc).__name__, exc)
 		return None
 
-	# Phase 3 — check principal_class is recognised (§5).
+	# principal_class is informational only — authorisation is enforced
+	# purely by scope (ADR-0001 §6). Do not reject on an absent or
+	# unrecognised principal_class (§5 redesign, lucas42/lucos_aithne#268).
 	principal_class = payload.get("principal_class")
-	if principal_class not in ("human", "agent"):
-		logger.warning("JWT rejected: unknown principal_class '%s'", principal_class)
-		return None
 
 	scopes = payload.get("scopes") or []
 	sub = payload["sub"]

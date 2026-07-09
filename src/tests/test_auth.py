@@ -187,7 +187,11 @@ class TestCheckAuth:
 			with pytest.raises(AuthException):
 				checkAuth(handler)
 
-	def test_unknown_principal_class_raises_auth_exception(self):
+	def test_unknown_principal_class_is_accepted(self):
+		"""principal_class is informational only (§5 redesign,
+		lucas42/lucos_aithne#268) — authorisation is enforced purely by
+		scope (ADR-0001 §6). An unrecognised principal_class must not cause
+		rejection as long as the required scope is present."""
 		handler = _make_handler(cookies={'aithne_session': 'valid.jwt.unknown'})
 		payload = {
 			'principal_class': 'robot',  # not human or agent
@@ -197,8 +201,8 @@ class TestCheckAuth:
 			'iat': int(time.time()),
 		}
 		with self._patch_decode(payload):
-			with pytest.raises(AuthException):
-				checkAuth(handler)
+			result = checkAuth(handler)
+		assert result == ('robot', 'thing', ['backups:use'])
 
 	# Development render-ui bypass
 	def test_render_ui_bypass_in_development(self):
