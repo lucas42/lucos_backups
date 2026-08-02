@@ -210,9 +210,11 @@ docker run --rm --volume lucos_media_metadata_api_db:/data alpine:latest ls -lh 
 
 **Volumes:** `lucos_authentication_config`, `lucos_dns_generatedzones`, `lucos_router_generatedconfig`, `lucos_router_letsencrypt`, `lucos_loganne_state`, `lucos_locations_config`, `lucos_locations_mosquitto_data`, `lucos_locations_mosquitto_log`, `lucos_repos_data`, `lucos_schedule_tracker_db`, `lucos_creds_store`
 
-**Note on effort levels:** Several of these volumes are classified as `automatic` or `tolerable` effort — meaning data can be regenerated automatically or loss is acceptable. Check `config.yaml` for the `recreate_effort` value before deciding whether to restore from backup or just restart the service and let it rebuild.
+**Restoring is the default. If a backup exists, restore from it.** For generated volumes, the **Verify** step below has you trigger a regeneration after restart, which reconciles anything stale — so a restore is never *worse* than a rebuild, only sometimes redundant.
 
-For `lucos_creds_store` (credentials): this is `considerable` effort to recreate manually. Always restore from backup rather than trying to recreate.
+**Do not consult `recreate_effort` for this decision.** It describes what we'd do having lost the volume **and** been unable to restore from backup — it is the no-backup fallback. `automatic` means *"with no backups left, we'd let systems repopulate rather than intervene"*. It does **not** mean the data is fully reproducible, and it does not mean "don't bother restoring a backup you have".
+
+**Why default to restoring:** the two mistakes aren't symmetric. Restoring where a rebuild would have sufficed costs a few minutes and at most a day's staleness — visible and recoverable. Rebuilding where a restore was needed can lose data **silently and permanently**, and nothing will tell you it happened. When in doubt, restore.
 
 **Restore:**
 
