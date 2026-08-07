@@ -8,8 +8,8 @@ requests = "*"
 fabric = "*"
 pyyaml = "*"
 jinja2 = ">=3.1.6"
-lucos-loganne-pythonclient = ">=2.0.5"
-lucos-schedule-tracker-pythonclient = ">=2.0.7"
+lucos-loganne-pythonclient = ">=2.0.6"
+lucos-schedule-tracker-pythonclient = ">=2.0.8"
 PyJWT = {extras = ["cryptography"], version = "*"}
 
 [dev-packages]
