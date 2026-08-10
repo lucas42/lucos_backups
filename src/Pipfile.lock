@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "76dc64180238fe7a45d724523a16f83c7112fd8b3fd5c5350e77c0be6b2d6774"
+            "sha256": "92e74131d33bb82c153c65a019d6968ae501986ec130abdb37c46b20183aef52"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -400,21 +400,21 @@
         },
         "lucos-loganne-pythonclient": {
             "hashes": [
-                "sha256:9ff7956cbd434b0167f5aca7e3de5c97bd404f6d97114fb1015d06a86f0e7396",
-                "sha256:fd214a0f36d33fd09b9b0e2063ef92f2e788ef837ab1044f9b53f600601ac6e2"
+                "sha256:5a0443a95fde47a19a52db3acfe9e3fe77a37be9c7ad2c4b268c53a78248588f",
+                "sha256:af0a1fa342cd345c9b3e582e1e18b8aa574f4a8e8e1ed2f6d82005893ff51da8"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==2.0.6"
+            "version": "==2.0.7"
         },
         "lucos-schedule-tracker-pythonclient": {
             "hashes": [
-                "sha256:1941c46c94bfb86da5b92ad4fa82ef76303f81c86649e8a3f0238cf1a43286b8",
-                "sha256:c83172ec25385bce1de833fec783b1c97d78ec60205c65254fc90162aec0624b"
+                "sha256:a0a1f321b5e37e39fda569ca9aea88435558b4966daacfab9b3b5804a191fb0b",
+                "sha256:a65bab7ebe7085f39e2fa118f632e7f1381a5ce26ff6f94bc47b65e1b675dc17"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==2.0.8"
+            "version": "==2.0.9"
         },
         "markupsafe": {
             "hashes": [
@@ -775,11 +775,12 @@
         },
         "packaging": {
             "hashes": [
-                "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e",
-                "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"
+                "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79",
+                "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
             ],
-            "markers": "python_version >= '3.8'",
-            "version": "==26.2"
+            "index": "pypi",
+            "markers": "python_version >= '3.9'",
+            "version": "==26.3"
         },
         "pluggy": {
             "hashes": [
