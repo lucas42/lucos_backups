@@ -1,5 +1,10 @@
 FROM lucas42/lucos_navbar:2.3.2 AS navbar
-FROM python:3.15.0a2-alpine
+# Must be a STABLE CPython release. Pre-release tags (3.15.0aN/bN/rcN) build
+# fine but break at runtime: binary wheels published for cp3XX are compiled
+# against a later pre-release with a wider C-API type-slot table, so importing
+# them dies with "unknown slot ID N". This took backups down for 15h on
+# 2026-08-17 (see lucas42/lucos_backups#390).
+FROM python:3.14.6-alpine
 ARG VERSION
 ENV VERSION=$VERSION
 
