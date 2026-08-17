@@ -4,15 +4,25 @@ orbs:
 jobs:
   test:
     docker:
-      - image: cimg/python:3.14
+      - image: cimg/base:current
     steps:
       - checkout
       - run:
-          name: Install dependencies
-          command: pip install pipenv && cd src && pipenv install --dev
+          name: Reject pre-release base images
+          command: |
+            if grep -nE '^FROM [^ ]*:[^ ]*(alpha|beta|[0-9](a|b|rc)[-._]?[0-9]|[-._]rc[-._]?[0-9])' Dockerfile; then
+              echo "Pre-release base image tag(s) found above."
+              echo "Pre-release interpreters build fine and break at runtime when a"
+              echo "dependency publishes a wheel built against a later pre-release."
+              exit 1
+            fi
+      - setup_remote_docker
       - run:
-          name: Run tests
-          command: cd src && pipenv run python3 -m pytest tests/
+          name: Build the image under test
+          command: docker build --target test -t lucos_backups:test .
+      - run:
+          name: Run tests inside the shipped image
+          command: docker run --rm lucos_backups:test
 workflows:
   version: 2
   build-deploy:
