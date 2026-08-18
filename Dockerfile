@@ -15,7 +15,9 @@ WORKDIR /usr/src/app
 # snapshots, so the binary ships in the versioned image rather than being
 # installed on any host.
 RUN apk add sed curl openssh-client rsync
-RUN pip install pipenv
+# Pinned: an unpinned pipenv can compute a different Pipfile.lock hash than
+# the one committed, causing --deploy below to fail on unrelated commits.
+RUN pip install pipenv==2026.7.1
 
 COPY src/backups.cron .
 RUN cat backups.cron | crontab -
@@ -23,7 +25,10 @@ RUN rm backups.cron
 COPY src/*.sh .
 
 COPY src/Pipfile* ./
-RUN pipenv install
+# --deploy installs strictly from Pipfile.lock and fails the build if the
+# lock is out of sync with Pipfile, instead of silently re-resolving from
+# PyPI (lucas42/lucos_backups#392).
+RUN pipenv install --deploy
 
 COPY src /usr/src/app
 COPY --from=navbar lucos_navbar.js resources/
@@ -31,7 +36,7 @@ COPY --from=navbar lucos_navbar.js resources/
 # Runs the suite against the shipped interpreter and dependency set. CI builds
 # this target; see .circleci/config.yml.
 FROM app AS test
-RUN pipenv install --dev
+RUN pipenv install --deploy --dev
 CMD [ "pipenv", "run", "python", "-m", "pytest", "tests/", "-q"]
 
 # Must stay the LAST stage: buildx bake builds the Dockerfile's default target,
