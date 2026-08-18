@@ -4,7 +4,7 @@ FROM lucas42/lucos_navbar:2.3.2 AS navbar
 # against a later pre-release with a wider C-API type-slot table, so importing
 # them dies with "unknown slot ID N". This took backups down for 15h on
 # 2026-08-17 (see lucas42/lucos_backups#390).
-FROM python:3.14.6-alpine AS app
+FROM python:3.14.7-alpine AS app
 ARG VERSION
 ENV VERSION=$VERSION
 
