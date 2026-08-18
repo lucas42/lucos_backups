@@ -39,8 +39,7 @@ FROM app AS test
 RUN pipenv install --deploy --dev
 CMD [ "pipenv", "run", "python", "-m", "pytest", "tests/", "-q"]
 
-# Must stay the LAST stage: buildx bake builds the Dockerfile's default target,
-# and docker-compose.yml declares a bare `build: .`, so anything below this
-# would be what ships to production.
+# Shipped stage is pinned via docker-compose.yml's build.target: production,
+# not by stage order (lucas42/lucos_backups#396).
 FROM app AS production
 CMD [ "./scripts/startup.sh"]
