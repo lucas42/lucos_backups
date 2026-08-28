@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9319c3635b088f7b397fa5e3bc6c0f636dff27d451ebdf9d66085ad249cd9571"
+            "sha256": "b23853cbe1e454c42939491f4d1572a52f4d5ac0d279acd1f75236419458e6f8"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -453,11 +453,11 @@
         },
         "idna": {
             "hashes": [
-                "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2",
-                "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"
+                "sha256:5e0811a4383b21dc5838069f801c4fb62113b7447663d2530d2bd6e77b49bf15",
+                "sha256:815e7be7a7806d54abb586dc943addc79e8b2ee16915059658cbeff4b1b43bf4"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==3.18"
+            "version": "==3.19"
         },
         "invoke": {
             "hashes": [
@@ -478,21 +478,21 @@
         },
         "lucos-loganne-pythonclient": {
             "hashes": [
-                "sha256:4aecec4e13b6081bf58b1775391fb9369e327fd6b9e157af10c1aa4a53bf807c",
-                "sha256:9e25042a648ecead1d95ddd384f320f2bd55642b43a8439068befbfc00245995"
+                "sha256:47c15708d9ca64e007e29a5cf2066fbc2aa9ff6b7cf24012e8b1a1be146891aa",
+                "sha256:a1b71475c58041a5f19b09c7abb6e3d32d0bc9f6fa7e7dea7e6f9ed70aeff174"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==2.0.9"
+            "version": "==2.0.10"
         },
         "lucos-schedule-tracker-pythonclient": {
             "hashes": [
-                "sha256:422cb98144e3b909b68388addda53b965ce8d1f04c94b37e477a6fe316f6565d",
-                "sha256:c011243b74dbbcccec966e652e4f44d9333beb73c411b493af1ba1f46472c83b"
+                "sha256:1795bb4982b1c78b9472e7bf67cb2e7cb542bfb9e6e7a9945eba75c0aace95d2",
+                "sha256:4a7184fd2e7ed66950ea90e31c7e445efcb711ccc81e07ebfb2665cb2e4adc4e"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==2.0.11"
+            "version": "==2.0.12"
         },
         "markupsafe": {
             "hashes": [
