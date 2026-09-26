@@ -1,7 +1,7 @@
 # ADR-0002: Incremental backups for large immutable media volumes (photos)
 
 **Date:** 2026-06-09
-**Status:** Accepted (2026-06-09). Ratified by lucas42 on merge of lucas42/lucos_backups#319. The aurora-viability analysis lucas42 asked to settle before approval was **complete** at ratification (rsync verified present at the real backup path, §3), so this records a **single unconditional decision**, not an "if-this-then-that" fork. **Amended 2026-06-14** (post-incident lucas42/lucos#245 — rollout discipline for incremental opt-ins + orphaned-`.partial` GC; see the Amendment section at the end). The §Decision is unchanged.
+**Status:** Accepted (2026-06-09). Ratified by lucas42 on merge of lucas42/lucos_backups#319. The aurora-viability analysis lucas42 asked to settle before approval was **complete** at ratification (rsync verified present at the real backup path, §3), so this records a **single unconditional decision**, not an "if-this-then-that" fork. **Amended 2026-06-14** (post-incident lucas42/lucos#245 — rollout discipline for incremental opt-ins + orphaned-`.partial` GC; see the Amendment section at the end). **Amended 2026-09-13** (lucas42/lucos_backups#344 — a separate *consistency* axis, `quiesce`, alongside transport; see the second Amendment). The §Decision is unchanged.
 **Discussion:** https://github.com/lucas42/lucos_backups/issues/318
 **Forcing function:** https://github.com/lucas42/lucos_photos/issues/424 (Google Photos import ~13×'s the `photos` volume)
 **Throughput data point:** https://github.com/lucas42/lucos_backups/issues/309 (closed copy-timeout incident)
@@ -141,3 +141,34 @@ This amendment records the durable lessons. It **does not change the §Decision*
 - **Rollout discipline — scoped to new hosts / transport paths, not new volumes** (per lucas42's review, 2026-06-14). Because the serial bugs were properties of the *source-host → destination-host transport path* (above), the supervised-rollout care is **per-host / per-path**, not per-volume. Onboarding incremental backups on a **new source host**, or to a **new destination**, is where it is warranted: roll it out via a **supervised, off-cron seed run** with a **monitoring watch on `create-backups`**, *expecting* serial first-live bug discovery and fixing forward. This is the deliberate process substitute for the CI/staging harness that was **risk-accepted as not worth building** (non-deterministic, needs the real gateway + destination, and the failure mode is an internal backup delayed ≤1 day that `create-backups` already catches — see lucas42/lucos#245). Adding a **new volume on a host whose incremental path is already proven reuses that path and needs no such care** — `lucos_photos_photos` over avalon→aurora is the worked precedent that proves that path.
 - **The `--seed` capability still earns its keep for any *large* new volume — for a resource reason, not bug-discovery.** Even on an already-proven path, a large volume's one-time full seed should be run off-cron (the §4 / C5 capability) so the initial full transfer doesn't starve the nightly cron's other volumes. So `--seed` has two independent justifications: *serial-bug-discovery* (first incremental backup on a new host/path) and *copy-window/resource* (any large first seed, on any host).
 - **Orphaned `.partial` garbage-collection** (tracked: lucas42/lucos_backups#333). The "Snapshot pruning is new logic" item above covers *final* snapshots only. A run that fails **after** rsync lands data but **before** the atomic publish leaves a `<date>.partial/` behind; a same-date retry resumes it (`--partial`), but a failure fixed on a **later** date orphans the prior `.partial` permanently — `_latest_snapshot_date` ignores `.partial` and nothing GCs it. Per-orphan cost is bounded (hardlinked via `--link-dest` to the previous final ≈ one day's deltas, not a full copy), but the count is **unbounded** over repeated cross-date failures on the capacity-capped aurora NAS. The 2026-06-08 incident *exposed* this gap rather than triggering a leak (#330 was fixed same-date 08:42→08:45, so the seed almost certainly resumed-and-published the same-date `.partial`). The prune step should GC stale `.partial/` dirs alongside thinning final snapshots.
+
+## Amendment — 2026-09-13: consistency is separate from transport (quiesce-during-read)
+
+Signed off by lucas42 on lucas42/lucos_backups#344 (2026-06-24), ratified by the architect with six conditions. Neither transport path ever took an *atomic* read. `full-snapshot` tars the live volume and `incremental` rsyncs it, both over seconds to minutes while writers keep writing, so a database volume could be archived as a smear across time that its own recovery was never designed to reconcile. This amendment adds a **second, independent axis** to the model. It **does not change the §Decision**: `backup_strategy` keeps meaning transport and rotation.
+
+### The model
+
+- **Transport / rotation:** `backup_strategy` (`full-snapshot` | `incremental`), unchanged.
+- **Consistency:** a per-volume lucos_configy field **`quiesce`** (default `false`). It is keyed on *"is this volume mutated in place by a running writer"*, **not** on database engine. lucas42 rejected engine-specific strategies (SQLite `.backup`, `pg_dump`, …) as a per-engine maintenance tax, and they would never have covered the `incremental` path anyway.
+
+### The mechanism
+
+For a quiesced `full-snapshot` volume, `Volume.archiveLocally()` discovers the running containers mounting the volume (`docker ps --filter volume=`). It then runs `scripts/quiesce-capture.sh` as one host-side invocation, which pauses them, takes an **uncompressed** `tar` into `local/.staging/`, and unpauses. Compression happens afterwards, unpaused, and the result is renamed into place. The freeze is therefore bounded by local copy time, never by gzip or the WAN transfer. A volume with no running writer is already at rest and is captured without a pause.
+
+- **Guarantee: crash-consistency, not application-consistency.** A frozen writer's volume is a single point-in-time image. Every crash-safe engine recovers such an image by its normal startup path (WAL / journal replay), which yields the last committed transaction. There is no cross-volume or cross-service consistency, but that was already true, since each volume has always been backed up independently.
+- **Guaranteed unpause is the dominant new risk,** because a writer left paused is an outage. Three independent layers:
+  1. An `EXIT` trap, with `HUP`/`INT`/`TERM` converted to exits so a dropped SSH session still unpauses.
+  2. A time bound on the capture (`timeout -k`, with `docker run --init` so the signal actually reaches `tar` rather than a PID 1 that ignores it).
+  3. A `nohup` watchdog that unpauses even if the script is SIGKILLed.
+
+  The script then **verifies** `State.Paused == false` rather than trusting exit codes, and fails with a distinct status if a writer is still paused. Every failure fails the volume's backup loudly. There is deliberately **no fallback to a live tar**.
+- **`incremental` is exempt.** It rsyncs straight from the live volume across the WAN with no local staging, so quiescing it would freeze the writers for the whole transfer. Its only user, `lucos_photos_photos`, is append-only media, where a smear is harmless. `quiesce: true` on an `incremental` volume is rejected by lucos_configy's CI and again at backup time. If an in-place-writer volume ever needs incremental transport, the prerequisite is restructuring `backupIncremental()` to rsync to a local mirror under pause and then transport unpaused.
+
+### Consequences
+
+- **Positive:** one mechanism for every engine, with no engine tooling in the image, nothing installed on hosts, and no per-engine code paths.
+- **Negative:** each quiesced writer is frozen once per backup run for the duration of its local copy, which measured ~1–3 s for a few hundred MB during development. A paused container doesn't answer requests or healthchecks in that window. At current DB-volume sizes (largest 239 MB) that stays within monitoring's thresholds, but if a quiesced volume grows large, the freeze grows with it. Planned-maintenance suppression is the fallback.
+
+### Future revisit
+
+Docker volumes on every host sit on plain ext4, with no LVM, ZFS or btrfs. If any host ever gains a copy-on-write filesystem, a CoW snapshot becomes the better consistency mechanism (a millisecond freeze, decoupled from copy duration). It would slot into this same consistency/transport split with no model change.
