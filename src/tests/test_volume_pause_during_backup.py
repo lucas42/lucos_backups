@@ -1,10 +1,10 @@
 """
-Unit tests for the quiesce-during-read path (#344):
-- Volume reads `quiesce` from config (default off)
-- a quiesced archive pauses writers only around an uncompressed local capture,
+Unit tests for the pause-during-backup path (#344):
+- Volume reads `pause_during_backup` from config (default off)
+- a paused archive pauses writers only around an uncompressed local capture,
   then compresses unpaused, and always clears its staging copy
 - there is no fallback to a live tar when the capture fails
-- quiesce + incremental is refused at backup time
+- pause_during_backup + incremental is refused at backup time
 
 Tests run from src/ so that effort_labels.yaml is accessible at module load.
 """
@@ -19,7 +19,7 @@ FAKE_VOLUMES_CONFIG = {
 	"lucos_aithne_credential_store": {
 		"description": "Auth store",
 		"recreate_effort": "considerable",
-		"quiesce": True,
+		"pause_during_backup": True,
 	},
 	"lucos_notes_data": {
 		"description": "Notes data",
@@ -29,7 +29,7 @@ FAKE_VOLUMES_CONFIG = {
 		"description": "Misconfigured",
 		"recreate_effort": "small",
 		"backup_strategy": "incremental",
-		"quiesce": True,
+		"pause_during_backup": True,
 	},
 }
 
@@ -52,7 +52,7 @@ def run_result(stdout=""):
 	return result
 
 
-class TestQuiesce:
+class TestPauseDuringBackup:
 
 	def setup_method(self):
 		fake_config = MagicMock()
@@ -95,28 +95,28 @@ class TestQuiesce:
 	def _commands(self, vol):
 		return [c[0][0] for c in vol.host.connection.run.call_args_list]
 
-	def test_quiesce_read_from_config(self):
+	def test_pause_during_backup_read_from_config(self):
 		vol = self._make_volume()
-		assert vol.quiesce is True
-		assert vol.data["quiesce"] is True
+		assert vol.pause_during_backup is True
+		assert vol.data["pause_during_backup"] is True
 
-	def test_quiesce_defaults_off(self):
+	def test_pause_during_backup_defaults_off(self):
 		vol = self._make_volume("lucos_notes_data")
-		assert vol.quiesce is False
-		assert vol.data["quiesce"] is False
+		assert vol.pause_during_backup is False
+		assert vol.data["pause_during_backup"] is False
 
-	def test_unknown_volume_is_not_quiesced(self):
+	def test_unknown_volume_is_not_paused(self):
 		vol = self._make_volume("lucos_not_in_config")
-		assert vol.quiesce is False
+		assert vol.pause_during_backup is False
 
-	def test_unquiesced_volume_keeps_the_plain_live_tar(self):
+	def test_unpaused_volume_keeps_the_plain_live_tar(self):
 		vol = self._make_volume("lucos_notes_data")
 		vol.archiveLocally()
 		commands = self._commands(vol)
 		assert not any("docker ps --filter" in c for c in commands)
 		assert any("tar -C /raw-data -czf" in c for c in commands)
 
-	def test_quiesced_archive_passes_discovered_writers_to_the_capture_script(self):
+	def test_paused_archive_passes_discovered_writers_to_the_capture_script(self):
 		vol = self._make_volume(writers="lucos_aithne\nlucos_aithne_sidecar\n")
 		(archive_path, date) = vol.archiveLocally()
 
@@ -133,7 +133,7 @@ class TestQuiesce:
 		]
 		assert archive_path == "/srv/backups/local/volume/lucos_aithne_credential_store.{}.tar.gz".format(date)
 
-	def test_quiesced_archive_never_runs_a_live_compressed_tar(self):
+	def test_paused_archive_never_runs_a_live_compressed_tar(self):
 		vol = self._make_volume()
 		vol.archiveLocally()
 		assert not any("-czf" in c for c in self._commands(vol))
@@ -190,8 +190,8 @@ class TestQuiesce:
 		vol = self._make_volume()
 		vol.archiveLocally()
 		capture_call = next(c for c in vol.host.connection.run.call_args_list if c[0][0].startswith("sh -c "))
-		assert capture_call[1]["timeout"] < volume_module.QUIESCE_WATCHDOG_SECONDS
-		assert volume_module.QUIESCE_CAPTURE_TIMEOUT < volume_module.QUIESCE_WATCHDOG_SECONDS
+		assert capture_call[1]["timeout"] < volume_module.PAUSED_WATCHDOG_SECONDS
+		assert volume_module.PAUSED_CAPTURE_TIMEOUT < volume_module.PAUSED_WATCHDOG_SECONDS
 
 	def test_no_writers_still_uses_the_staged_capture(self):
 		vol = self._make_volume(writers="")
@@ -199,9 +199,9 @@ class TestQuiesce:
 		capture = next(c for c in self._commands(vol) if c.startswith("sh -c "))
 		assert shlex.split(capture)[-1].endswith(".staging/lucos_aithne_credential_store.tar")
 
-	def test_quiesce_with_incremental_is_refused(self):
+	def test_pause_during_backup_with_incremental_is_refused(self):
 		vol = self._make_volume("lucos_bad_combo")
 		vol.backupIncremental = MagicMock()
-		with pytest.raises(Exception, match="quiesce"):
+		with pytest.raises(Exception, match="pause_during_backup"):
 			vol.backup()
 		vol.backupIncremental.assert_not_called()

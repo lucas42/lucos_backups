@@ -144,7 +144,7 @@ class TestGnuShellFindBackupFiles:
         cmd = self.conn.run.call_args[0][0]
         assert "/srv/backups/" in cmd
 
-    def test_find_excludes_quiesce_staging_directory(self):
+    def test_find_excludes_paused_capture_staging_directory(self):
         """A leftover .staging/<vol>.tar must never be listed as a backup."""
         self.conn.run.return_value = self._run_result("")
         self.shell.find_backup_files()

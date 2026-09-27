@@ -1,5 +1,5 @@
 """
-Tests for scripts/quiesce-capture.sh — the host-side bracket that pauses a
+Tests for scripts/paused-capture.sh — the host-side bracket that pauses a
 volume's writers around its local read (#344).
 
 The one property that matters most is that a writer is never left paused, so
@@ -13,7 +13,7 @@ import subprocess
 import time
 import pytest
 
-SCRIPT = os.path.join(os.path.dirname(__file__), "..", "scripts", "quiesce-capture.sh")
+SCRIPT = os.path.join(os.path.dirname(__file__), "..", "scripts", "paused-capture.sh")
 
 FAKE_DOCKER = r'''#!/bin/sh
 state="$FAKE_DOCKER_STATE"

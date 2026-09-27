@@ -90,7 +90,7 @@ class GnuShell:
 		those directories hold tens of thousands of individual media files that are
 		not per-file backup instances; they're discovered separately by
 		find_snapshot_dirs() and represented as one instance per dated snapshot.
-		The quiesce .staging/ directory is excluded too: it only ever holds
+		The paused-capture .staging/ directory is excluded too: it only ever holds
 		in-flight captures (BusyBoxShell's walker already skips dot-entries).'''
 		return self.connection.run(
 			"find {ROOT_DIR} -wholename '{ROOT_DIR}*/**' -not -path '*/volume-snapshots/*' -not -path '*/.staging/*' -type f -printf \"%TY-%Tm-%Td\\t%s\\t%p\\n\"".format(ROOT_DIR=self.backup_root),

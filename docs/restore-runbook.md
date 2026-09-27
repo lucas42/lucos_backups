@@ -134,7 +134,7 @@ docker compose up -d
 
 ## Volume-Specific Notes
 
-### Quiesced volumes (`quiesce: true` in `lucos_configy`)
+### Volumes paused during backup (`pause_during_backup: true` in `lucos_configy`)
 
 These archives are **crash-consistent**: they were taken while the volume's writers were paused, so they capture a single moment including any journal files (SQLite `-wal`/`-shm`, Postgres `pg_wal/`). Restore the archive **exactly as it is**. Don't delete or skip journal files, because on first start the engine replays them to reach its last committed transaction, just as it would after a power cut. See ADR-0002's 2026-09-13 amendment.
 

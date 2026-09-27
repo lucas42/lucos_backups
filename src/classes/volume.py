@@ -13,13 +13,13 @@ with open("effort_labels.yaml") as effort_labels_yaml:
 	effort_labels = yaml.safe_load(effort_labels_yaml)
 
 # Runs on the source host to pause a volume's writers around a fast local read.
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "quiesce-capture.sh")) as quiesce_script_file:
-	QUIESCE_CAPTURE_SCRIPT = quiesce_script_file.read()
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "paused-capture.sh")) as paused_capture_script_file:
+	PAUSED_CAPTURE_SCRIPT = paused_capture_script_file.read()
 
 # Upper bound on the paused read; exceeding it unpauses and fails the backup.
-QUIESCE_CAPTURE_TIMEOUT = 60
+PAUSED_CAPTURE_TIMEOUT = 60
 # Independent backstop that unpauses even if the capture script is killed outright.
-QUIESCE_WATCHDOG_SECONDS = 120
+PAUSED_WATCHDOG_SECONDS = 120
 
 class Volume:
 	def __init__(self, host, rawjson):
@@ -37,7 +37,7 @@ class Volume:
 			# "incremental" → rsync --link-dest hardlink-rotated snapshots (ADR-0002).
 			backup_strategy = getVolumesConfig()[self.name].get("backup_strategy") or "full-snapshot"
 			# Pause the volume's running writers during the local read (#344).
-			quiesce = getVolumesConfig()[self.name].get("quiesce") or False
+			pause_during_backup = getVolumesConfig()[self.name].get("pause_during_backup") or False
 		else:
 			known = False
 			description = "Unknown Volume"
@@ -45,9 +45,9 @@ class Volume:
 			skip_backup = False
 			skip_backup_on_hosts = []
 			backup_strategy = "full-snapshot"
-			quiesce = False
+			pause_during_backup = False
 		self.backup_strategy = backup_strategy
-		self.quiesce = quiesce
+		self.pause_during_backup = pause_during_backup
 		labels = {}
 		if data["Labels"]:
 			for label in data["Labels"].split(","):
@@ -72,7 +72,7 @@ class Volume:
 			'skip_backup': skip_backup,
 			'skip_backup_on_hosts': skip_backup_on_hosts,
 			'backup_strategy': backup_strategy,
-			'quiesce': quiesce,
+			'pause_during_backup': pause_during_backup,
 			'project': {
 				'name': project,
 				'link': "https://github.com/lucas42/"+project,
@@ -91,8 +91,8 @@ class Volume:
 		date = datetime.today().strftime('%Y-%m-%d')
 		archivePath = "{archive_directory}/{volume_name}.{date}.tar.gz".format(archive_directory=archiveDirectory, volume_name=self.name, date=date)
 		self.host.connection.run("mkdir -p {}".format(archiveDirectory), timeout=3)
-		if self.quiesce:
-			self.archiveQuiesced(archivePath)
+		if self.pause_during_backup:
+			self.archiveWithWritersPaused(archivePath)
 			return (archivePath, date)
 		self.host.connection.run("docker run --rm --volume {volume_name}:/raw-data --mount src={archive_directory},target={archive_directory},type=bind alpine:latest tar -C /raw-data -czf {archive_path} .".format(
 			volume_name=self.name,
@@ -113,19 +113,19 @@ class Volume:
 	# the archive is one point in time rather than a smear across live writes.
 	# Only an uncompressed local capture happens while paused; gzip runs after.
 	# Any failure raises: there is deliberately no fallback to a live tar.
-	def archiveQuiesced(self, archivePath):
+	def archiveWithWritersPaused(self, archivePath):
 		localRoot = self.host.backup_root + "local"
 		# Dot-prefixed so neither find_backup_files walker lists it as a backup.
 		stagingPath = "{}/.staging/{}.tar".format(localRoot, self.name)
 		self.host.connection.run("mkdir -p {}/.staging".format(localRoot), timeout=3)
 		writers = self.findWriters()
 		capture_command = " ".join(shlex.quote(arg) for arg in [
-			"sh", "-c", QUIESCE_CAPTURE_SCRIPT, "quiesce-capture",
-			str(QUIESCE_CAPTURE_TIMEOUT), str(QUIESCE_WATCHDOG_SECONDS),
+			"sh", "-c", PAUSED_CAPTURE_SCRIPT, "paused-capture",
+			str(PAUSED_CAPTURE_TIMEOUT), str(PAUSED_WATCHDOG_SECONDS),
 			self.name, localRoot, stagingPath,
 		] + writers)
 		try:
-			result = self.host.connection.run(capture_command, hide=True, timeout=QUIESCE_CAPTURE_TIMEOUT + 30)
+			result = self.host.connection.run(capture_command, hide=True, timeout=PAUSED_CAPTURE_TIMEOUT + 30)
 			print(result.stdout.strip(), flush=True)
 			# Compress beside the staging copy and rename into place, so an interrupted
 			# gzip never leaves a partial archive where tracking would count it.
@@ -197,9 +197,9 @@ class Volume:
 		if not self.shouldBackup():
 			return 0
 		if self.backup_strategy == "incremental":
-			# Quiescing would freeze the writers for the whole WAN rsync (#344).
-			if self.quiesce:
-				raise Exception("{} sets quiesce with backup_strategy incremental, which is not supported — refusing to back it up".format(self.name))
+			# Pausing would freeze the writers for the whole WAN rsync (#344).
+			if self.pause_during_backup:
+				raise Exception("{} sets pause_during_backup with backup_strategy incremental, which is not supported — refusing to back it up".format(self.name))
 			self.backupIncremental()
 		else:
 			self.backupToAll()

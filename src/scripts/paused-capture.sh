@@ -6,7 +6,7 @@
 # Runs on the SOURCE host (sent over the Fabric SSH connection by
 # Volume.archiveLocally), not inside the lucos_backups container.
 #
-# Usage: quiesce-capture.sh <capture-timeout-s> <watchdog-s> <volume> <mount-dir> <staging-path> [writer...]
+# Usage: paused-capture.sh <capture-timeout-s> <watchdog-s> <volume> <mount-dir> <staging-path> [writer...]
 #
 # Unpause is guaranteed three ways: the EXIT trap (success, error, timeout); HUP,
 # INT and TERM are converted into an exit so the trap still runs if the SSH
