@@ -121,6 +121,62 @@ class Host:
 			for f in self.shell.list_one_off_files(directory)
 		]
 
+	def restoreMissingOneOffFiles(self, all_hosts):
+		'''Copy back one-off files that exist only as other hosts' backups (the source
+		file has gone).  Returns (healed_names, failure_names).  Only called from
+		create-backups: it can move GBs, so it must never run in the tracking refresh.
+
+		Heals only when every reachable copy agrees on byte size, since a copy
+		interrupted mid-transfer is never re-sent.  Each file is staged under a
+		hidden name and renamed once its size is verified.'''
+		if self.is_storage_only:
+			return [], []
+		local_dir = "{}local/one-off/".format(self.backup_root)
+		self.shell.ensure_one_off_dir(local_dir)
+		local_names = set(self.shell.one_off_sizes(local_dir))
+		copies = {}  # name -> list of (host, size)
+		for other in all_hosts:
+			if other.name == self.name:
+				continue
+			try:
+				sizes = other.shell.one_off_sizes("{}host/{}/one-off/".format(other.backup_root, self.name))
+			except Exception as error:
+				print("\033[93m** Warn ** Couldn't list one-off copies on {}: {}\033[0m".format(other.domain, error), flush=True)
+				continue
+			for name, size in sizes.items():
+				copies.setdefault(name, []).append((other, size))
+		healed, failures = [], []
+		for name in sorted(set(copies) - local_names):
+			holders = copies[name]
+			agreed_sizes = {size for _, size in holders}
+			if len(agreed_sizes) != 1:
+				print("\033[91m** Not healing {} on {}: copies disagree on size ({}) **\033[0m".format(
+					name, self.domain, ", ".join("{}={}".format(h.name, s) for h, s in holders)), flush=True)
+				failures.append(name)
+				continue
+			size = agreed_sizes.pop()
+			staging = local_dir + ".heal-" + name
+			final = local_dir + name
+			for holder, _ in holders:
+				try:
+					holder.copyTo(self, "{}host/{}/one-off/{}".format(holder.backup_root, self.name, name), staging)
+					staged_size = self.shell.file_size(staging)
+					if staged_size != size:
+						raise RuntimeError("staged size {} != expected {}".format(staged_size, size))
+					self.shell.move_file(staging, final)
+					print("Healed one-off file {} on {} from {}".format(name, self.domain, holder.name), flush=True)
+					healed.append(name)
+					break
+				except Exception as error:
+					print("\033[91m** Error healing {} on {} from {} ** {}\033[0m".format(name, self.domain, holder.name, error), flush=True)
+					try:
+						self.shell.remove_file(staging)
+					except Exception:
+						pass
+			else:
+				failures.append(name)
+		return healed, failures
+
 	def _outbound_ssh_args(self, target_host):
 		'''Build SSH option flags for outbound connections to target_host.
 

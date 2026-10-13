@@ -30,7 +30,7 @@ def format_backup_without_original(bwo_key, all_backups):
 	stored_hosts = sorted({
 		b["stored_host"]
 		for b in all_backups
-		if b["type"] == "volume"
+		if b["type"] in ("volume", "one-off")
 		and "{}/{}".format(b["source_host"], b["name"]) == bwo_key
 	})
 	return "{} (copies on: {})".format(bwo_key, ", ".join(stored_hosts))
@@ -158,7 +158,7 @@ class BackupsHandler(BaseHTTPRequestHandler):
 					"failThreshold": 5,
 				},
 				"backup-without-original": {
-					"techDetail": "Whether any backups exist for volumes that are no longer present on their source host but are still declared in configy (indicating an unexpected deletion rather than a deliberate decommission — decommissioned volumes are intentionally retained in backups and not flagged)",
+					"techDetail": "Whether any backups exist for volumes or one-off files that are no longer present on their source host (indicating an unexpected deletion rather than a deliberate decommission — volumes no longer declared in configy are intentionally retained in backups and not flagged; one-off files are always flagged, since they have no configy declaration)",
 					"ok": (len(data["backupsWithoutOriginals"]) == 0),
 					"debug": "Backups without originals: "+", ".join(
 						format_backup_without_original(bwo, data["backups"])

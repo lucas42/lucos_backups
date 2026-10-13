@@ -90,6 +90,19 @@ def fetchAllInfo():
 				# decommission (archival checklist step 2a) whose backups we
 				# deliberately retain — see lucos/docs/repo-archival.md line 143.
 				backups_without_originals.append("{}/{}".format(backup["source_host"], backup["name"]))
+		live_one_off_keys = {(f["source_host"], f["name"]) for f in info["one_off_files"]}
+		seen_backup_one_off_keys = set()
+		for backup in info["backups"]:
+			if backup["type"] != "one-off":
+				continue
+			key = (backup["source_host"], backup["name"])
+			if key in seen_backup_one_off_keys:
+				continue
+			seen_backup_one_off_keys.add(key)
+			if backup["source_host"] in failed_host_names:
+				continue
+			if key not in live_one_off_keys:
+				backups_without_originals.append("{}/{}".format(backup["source_host"], backup["name"]))
 		info["backupsWithoutOriginals"] = backups_without_originals
 
 		info["update_time"] = datetime.datetime.now(datetime.timezone.utc)

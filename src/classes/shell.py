@@ -9,6 +9,7 @@ BusyBoxShell: uses connection.sftp() to walk the tree and read st_size/st_mtime
               directly, avoiding BusyBox's date-format-quirky ls/stat output.
               Uses plain `df` parsed by column position for disk space.
 '''
+import shlex
 import stat
 from datetime import datetime
 
@@ -49,6 +50,29 @@ class GnuShell:
 				'size': cols[4],
 			})
 		return result
+
+	def one_off_sizes(self, directory):
+		'''Returns {filename: size_in_bytes} for regular, non-hidden files in directory.
+		Raw byte counts (unlike list_one_off_files) so copies can be compared exactly.
+		A missing directory gives an empty dict.'''
+		raw = self.connection.run(
+			"find {directory} -maxdepth 1 -type f -not -name '.*' -printf '%s\\t%f\\n' 2>/dev/null || true".format(directory=shlex.quote(directory)),
+			hide=True, timeout=30,
+		).stdout.splitlines()
+		sizes = {}
+		for line in raw:
+			size, name = line.split('\t', 1)
+			sizes[name] = int(size)
+		return sizes
+
+	def file_size(self, path):
+		return int(self.connection.run('stat -c %s {}'.format(shlex.quote(path)), hide=True, timeout=30).stdout.strip())
+
+	def move_file(self, source, destination):
+		self.connection.run('mv {} {}'.format(shlex.quote(source), shlex.quote(destination)), hide=True, timeout=600)
+
+	def remove_file(self, path):
+		self.connection.run('rm -f {}'.format(shlex.quote(path)), hide=True, timeout=60)
 
 	def disk_space(self):
 		'''Returns dict: {free_bytes, free_readable, used_percentage}'''
@@ -145,6 +169,26 @@ class BusyBoxShell:
 					'size': _format_bytes(attr.st_size),
 				})
 		return result
+
+	def one_off_sizes(self, directory):
+		'''Returns {filename: size_in_bytes} for regular, non-hidden files in directory.'''
+		try:
+			attrs = self._sftp().listdir_attr(directory)
+		except FileNotFoundError:
+			return {}
+		return {a.filename: a.st_size for a in attrs if stat.S_ISREG(a.st_mode) and not a.filename.startswith('.')}
+
+	def file_size(self, path):
+		return self._sftp().stat(path).st_size
+
+	def move_file(self, source, destination):
+		self._sftp().posix_rename(source, destination)
+
+	def remove_file(self, path):
+		try:
+			self._sftp().remove(path)
+		except FileNotFoundError:
+			pass
 
 	def disk_space(self):
 		'''Returns dict: {free_bytes, free_readable, used_percentage}

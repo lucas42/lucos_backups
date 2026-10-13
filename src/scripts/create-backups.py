@@ -51,9 +51,18 @@ def run(lock_file=LOCK_FILE, last_success_file=LAST_SUCCESS_FILE, fresh_threshol
 	backupCount = 0
 	failures = []
 
-	for host in Host.getAll():
+	all_hosts = Host.getAll()
+	for host in all_hosts:
 		print("Host:", host.domain, flush=True)
 		try:
+			healed, heal_failures = host.restoreMissingOneOffFiles(all_hosts)
+			failures += ["heal:{}/{}".format(host.domain, name) for name in heal_failures]
+			if healed:
+				updateLoganne(
+					type="backupsHeal",
+					humanReadable="Restored {} missing one-off file(s) on {} from backup copies: {}".format(len(healed), host.name, ", ".join(healed)),
+					level="notable",
+				)
 			for volume in host.getVolumes():
 				try:
 					backupCount += volume.backup()

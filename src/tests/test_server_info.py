@@ -67,8 +67,8 @@ class TestFormatBackupWithoutOriginal:
         )
         assert result == "avalon/lucos_photos_postgres_data (copies on: aurora, avalon, salvare, xwing)"
 
-    def test_only_volume_backups_counted(self, server_module):
-        """Repository and one-off backups with the same name must not be counted."""
+    def test_repository_backups_not_counted(self, server_module):
+        """Repository backups with the same name must not be counted (volume and one-off copies are)."""
         backups = [
             {"type": "volume", "source_host": "avalon", "name": "lucos_notes_stateFile", "stored_host": "salvare"},
             {"type": "repository", "source_host": "avalon", "name": "lucos_notes_stateFile", "stored_host": "aurora"},
@@ -77,8 +77,8 @@ class TestFormatBackupWithoutOriginal:
         result = server_module.format_backup_without_original(
             "avalon/lucos_notes_stateFile", backups
         )
-        # Only 'salvare' — the type=volume entry
-        assert result == "avalon/lucos_notes_stateFile (copies on: salvare)"
+        # 'salvare' (volume) and 'xwing' (one-off), but not the repository on 'aurora'
+        assert result == "avalon/lucos_notes_stateFile (copies on: salvare, xwing)"
 
     def test_deduplicates_storage_hosts(self, server_module):
         """Multiple backup instances from the same storage host count once."""

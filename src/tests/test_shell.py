@@ -825,3 +825,22 @@ class TestBusyBoxShellSnapshots:
         """No host/ tree yet → empty list, no error."""
         self.sftp.listdir_attr.side_effect = lambda p: (_ for _ in ()).throw(FileNotFoundError())
         assert self.shell.find_snapshot_dirs() == []
+
+
+class TestOneOffSizes:
+
+    def test_gnu_parses_raw_byte_sizes(self):
+        from classes.shell import GnuShell
+        conn = make_connection()
+        conn.run.return_value.stdout = "5850000000\ttime.tar.gz\n12\ta b.txt\n"
+        assert GnuShell(conn, "/srv/backups/").one_off_sizes("/d/") == {"time.tar.gz": 5850000000, "a b.txt": 12}
+
+    def test_busybox_skips_hidden_and_non_files(self):
+        from classes.shell import BusyBoxShell
+        conn = make_connection()
+        conn.sftp.return_value.listdir_attr.return_value = [
+            make_sftp_attr("a.tar", 100, 0),
+            make_sftp_attr(".heal-a.tar", 50, 0),
+            make_sftp_attr("subdir", 0, 0, mode=stat.S_IFDIR | 0o755),
+        ]
+        assert BusyBoxShell(conn, "/srv/backups/").one_off_sizes("/d/") == {"a.tar": 100}
