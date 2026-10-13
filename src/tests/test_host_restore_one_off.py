@@ -24,6 +24,7 @@ def _host(host_module, name, local=None, copies=None, storage_only=False):
     h.shell = MagicMock()
     h.shell.one_off_sizes.side_effect = lambda d: dict(local or {}) if "/local/" in d else dict(copies or {})
     h.copyTo = MagicMock()
+    h.shell.file_exists.return_value = False
     return h
 
 
@@ -88,3 +89,12 @@ def test_nothing_missing_does_nothing(host_module):
 def test_storage_only_host_is_not_a_heal_target(host_module):
     aurora = _host(host_module, "aurora", storage_only=True)
     assert aurora.restoreMissingOneOffFiles([aurora]) == ([], [])
+
+
+def test_does_not_overwrite_file_that_appears_locally(host_module):
+    target = _heal_target(host_module, staged_size=100)
+    target.shell.file_exists.return_value = True
+    xwing = _host(host_module, "xwing", copies={"a.tar": 100})
+    healed, failed = target.restoreMissingOneOffFiles([target, xwing])
+    assert (healed, failed) == ([], ["a.tar"])
+    target.shell.move_file.assert_not_called()

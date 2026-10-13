@@ -425,3 +425,19 @@ class TestOneOffHeal:
         kwargs = stubs["schedule_tracker"].updateScheduleTracker.call_args.kwargs
         assert kwargs["success"] is False
         assert "heal:" in kwargs["message"] and "a.tar" in kwargs["message"]
+
+    def test_heal_exception_does_not_skip_host_backups(self, cb):
+        module, stubs, lock_file, last_success_file = cb
+        mock_host = MagicMock()
+        mock_host.domain = "avalon.test"
+        mock_host.getVolumes.return_value = []
+        mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.side_effect = Exception("boom")
+        stubs["classes.host"].Host.getAll.return_value = [mock_host]
+        stubs["classes.repository"].Repository.getAll.return_value = []
+        with patch.dict("sys.modules", stubs):
+            module.run(lock_file=lock_file, last_success_file=last_success_file)
+        mock_host.getVolumes.assert_called_once()
+        mock_host.getOneOffFiles.assert_called_once()
+        message = stubs["schedule_tracker"].updateScheduleTracker.call_args.kwargs["message"]
+        assert "heal:avalon.test" in message

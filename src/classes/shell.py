@@ -68,6 +68,9 @@ class GnuShell:
 	def file_size(self, path):
 		return int(self.connection.run('stat -c %s {}'.format(shlex.quote(path)), hide=True, timeout=30).stdout.strip())
 
+	def file_exists(self, path):
+		return self.connection.run('test -e {}'.format(shlex.quote(path)), hide=True, warn=True, timeout=30).ok
+
 	def move_file(self, source, destination):
 		self.connection.run('mv {} {}'.format(shlex.quote(source), shlex.quote(destination)), hide=True, timeout=600)
 
@@ -180,6 +183,13 @@ class BusyBoxShell:
 
 	def file_size(self, path):
 		return self._sftp().stat(path).st_size
+
+	def file_exists(self, path):
+		try:
+			self._sftp().stat(path)
+			return True
+		except FileNotFoundError:
+			return False
 
 	def move_file(self, source, destination):
 		self._sftp().posix_rename(source, destination)

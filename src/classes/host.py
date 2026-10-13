@@ -163,6 +163,8 @@ class Host:
 					staged_size = self.shell.file_size(staging)
 					if staged_size != size:
 						raise RuntimeError("staged size {} != expected {}".format(staged_size, size))
+					if self.shell.file_exists(final):
+						raise RuntimeError("{} now exists locally; refusing to overwrite it".format(name))
 					self.shell.move_file(staging, final)
 					print("Healed one-off file {} on {} from {}".format(name, self.domain, holder.name), flush=True)
 					healed.append(name)
