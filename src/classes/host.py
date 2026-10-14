@@ -123,8 +123,7 @@ class Host:
 
 	def restoreMissingOneOffFiles(self, all_hosts):
 		'''Copy back one-off files that exist only as other hosts' backups (the source
-		file has gone).  Returns (healed_names, failure_names).  Only called from
-		create-backups: it can move GBs, so it must never run in the tracking refresh.
+		file has gone).  Returns (healed_names, failure_names).
 
 		Heals only when every reachable copy agrees on byte size, since a copy
 		interrupted mid-transfer is never re-sent.  Each file is staged under a
