@@ -121,8 +121,8 @@ class TestBackupsWithoutOriginals:
         info = run_fetch(tracking, [host], configy_volumes={"lucos_photos_postgres_data": {}})
         assert "avalon/lucos_photos_postgres_data" in info["backupsWithoutOriginals"]
 
-    def test_non_volume_backup_type_not_flagged(self, tracking):
-        """Backups of type 'repository' or 'one-off' should not be checked."""
+    def test_repository_backup_type_not_flagged(self, tracking):
+        """Backups of type 'repository' should not be checked."""
         host = _make_host()
         host.getData.return_value = {
             "volumes": [],
@@ -221,3 +221,34 @@ class TestBackupsWithoutOriginals:
         # configy_volumes is empty — volume also absent from configy = intentional decommission
         info = run_fetch(tracking, [host])
         assert "avalon/lucos_authentication_config" not in info["backupsWithoutOriginals"]
+
+
+def _one_off_host(files, backups, name="avalon", fail=False):
+    host = _make_host(name=name, fail=fail)
+    if not fail:
+        host.getData.return_value = {
+            "volumes": [],
+            "one_off_files": files,
+            "backups": backups,
+            "disk": {"used_percentage": 40},
+        }
+    return host
+
+
+class TestOneOffBackupsWithoutOriginals:
+
+    def test_one_off_with_live_file_not_flagged(self, tracking):
+        host = _one_off_host(
+            [{"name": "time.tar.gz", "source_host": "avalon"}],
+            [_make_backup_data("time.tar.gz", backup_type="one-off")],
+        )
+        assert run_fetch(tracking, [host])["backupsWithoutOriginals"] == []
+
+    def test_one_off_without_live_file_flagged(self, tracking):
+        host = _one_off_host([], [_make_backup_data("time.tar.gz", backup_type="one-off")])
+        assert run_fetch(tracking, [host])["backupsWithoutOriginals"] == ["avalon/time.tar.gz"]
+
+    def test_one_off_from_failed_host_not_flagged(self, tracking):
+        failing = _one_off_host([], [], name="avalon", fail=True)
+        storage = _one_off_host([], [_make_backup_data("time.tar.gz", backup_type="one-off")], name="xwing")
+        assert run_fetch(tracking, [failing, storage])["backupsWithoutOriginals"] == []

@@ -137,6 +137,7 @@ class TestSkipIfFresh:
         mock_host = MagicMock()
         mock_host.getVolumes.return_value = []
         mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.return_value = ([], [])
         stubs["classes.host"].Host.getAll.return_value = [mock_host]
         stubs["classes.repository"].Repository.getAll.return_value = []
 
@@ -157,6 +158,7 @@ class TestSkipIfFresh:
         mock_host = MagicMock()
         mock_host.getVolumes.return_value = []
         mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.return_value = ([], [])
         stubs["classes.host"].Host.getAll.return_value = [mock_host]
         stubs["classes.repository"].Repository.getAll.return_value = []
 
@@ -221,6 +223,7 @@ class TestFullRun:
         mock_host = MagicMock()
         mock_host.getVolumes.return_value = []
         mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.return_value = ([], [])
         stubs["classes.host"].Host.getAll.return_value = [mock_host]
         stubs["classes.repository"].Repository.getAll.return_value = []
         return mock_host
@@ -272,6 +275,7 @@ class TestFullRun:
         mock_host.domain = "avalon.s.l42.eu"
         mock_host.getVolumes.return_value = [mock_volume]
         mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.return_value = ([], [])
         stubs["classes.host"].Host.getAll.return_value = [mock_host]
         stubs["classes.repository"].Repository.getAll.return_value = []
         mock_tracker = stubs["schedule_tracker"].updateScheduleTracker
@@ -301,6 +305,7 @@ class TestFullRun:
         mock_host.domain = "avalon.s.l42.eu"
         mock_host.getVolumes.return_value = [mock_volume]
         mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.return_value = ([], [])
         stubs["classes.host"].Host.getAll.return_value = [mock_host]
         stubs["classes.repository"].Repository.getAll.return_value = []
 
@@ -329,6 +334,7 @@ class TestFullRun:
         mock_host_good.domain = "aurora.local"
         mock_host_good.getVolumes.return_value = []
         mock_host_good.getOneOffFiles.return_value = []
+        mock_host_good.restoreMissingOneOffFiles.return_value = ([], [])
 
         stubs["classes.host"].Host.getAll.return_value = [mock_host_bad, mock_host_good]
         stubs["classes.repository"].Repository.getAll.return_value = []
@@ -387,3 +393,51 @@ class TestFullRun:
         assert "salvare.l42.eu" in message
         assert failure_calls[0].kwargs.get("job_name") == "create-backups", \
             "updateScheduleTracker failure call must include job_name='create-backups'"
+
+
+class TestOneOffHeal:
+
+    def _run(self, cb, heal_result):
+        module, stubs, lock_file, last_success_file = cb
+        mock_host = MagicMock()
+        mock_host.name = "avalon"
+        mock_host.getVolumes.return_value = []
+        mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.return_value = heal_result
+        stubs["classes.host"].Host.getAll.return_value = [mock_host]
+        stubs["classes.repository"].Repository.getAll.return_value = []
+        with patch.dict("sys.modules", stubs):
+            module.run(lock_file=lock_file, last_success_file=last_success_file)
+        return stubs
+
+    def test_heal_emits_notable_loganne_event(self, cb):
+        stubs = self._run(cb, (["a.tar", "b.tar"], []))
+        kwargs = stubs["loganne"].updateLoganne.call_args.kwargs
+        assert kwargs["level"] == "notable"
+        assert "a.tar" in kwargs["humanReadable"] and "b.tar" in kwargs["humanReadable"]
+
+    def test_nothing_healed_emits_no_event(self, cb):
+        stubs = self._run(cb, ([], []))
+        stubs["loganne"].updateLoganne.assert_not_called()
+
+    def test_heal_failure_recorded_without_stopping_run(self, cb):
+        stubs = self._run(cb, ([], ["a.tar"]))
+        kwargs = stubs["schedule_tracker"].updateScheduleTracker.call_args.kwargs
+        assert kwargs["success"] is False
+        assert "heal:" in kwargs["message"] and "a.tar" in kwargs["message"]
+
+    def test_heal_exception_does_not_skip_host_backups(self, cb):
+        module, stubs, lock_file, last_success_file = cb
+        mock_host = MagicMock()
+        mock_host.domain = "avalon.test"
+        mock_host.getVolumes.return_value = []
+        mock_host.getOneOffFiles.return_value = []
+        mock_host.restoreMissingOneOffFiles.side_effect = Exception("boom")
+        stubs["classes.host"].Host.getAll.return_value = [mock_host]
+        stubs["classes.repository"].Repository.getAll.return_value = []
+        with patch.dict("sys.modules", stubs):
+            module.run(lock_file=lock_file, last_success_file=last_success_file)
+        mock_host.getVolumes.assert_called_once()
+        mock_host.getOneOffFiles.assert_called_once()
+        message = stubs["schedule_tracker"].updateScheduleTracker.call_args.kwargs["message"]
+        assert "heal:avalon.test" in message

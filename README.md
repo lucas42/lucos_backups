@@ -48,6 +48,12 @@ Each volume's backup mechanism is chosen per-volume via the `backup_strategy` fi
 * __full-snapshot__ (default, also when the field is absent) — a daily full `tar -czf` archived locally and copied to each backup host. Fine for the small DB-dump / config / state volumes that make up most of the estate.
 * __incremental__ — `rsync --link-dest` hardlink-rotated snapshots, for large, append-mostly media volumes where a daily full would exceed the copy window or destination headroom. Source-side `rsync` ships in this repo's container image (run as a container on the source host); each nightly run transfers only that day's deltas into a fresh dated snapshot directory. Decided in [ADR-0002](docs/adr/0002-incremental-photos-backup.md); currently used only by `lucos_photos_photos`.
 
+## Permanently deleting a one-off file
+
+One-off files are self-healing: each `create-backups` run copies any file that exists only as another host's backup (`host/<source>/one-off/`) back into the source host's `local/one-off/`. Deleting just one side therefore doesn't stick — delete the source and it's healed back; delete only the copies and they're re-copied from the source.
+
+To delete one permanently, remove **every** copy on **every** host between two `create-backups` runs: the source's `local/one-off/<file>` plus `host/<source>/one-off/<file>` on each storage host. If a storage host is unreachable at that moment, its surviving copy will bring the file back later. This is deliberately awkward.
+
 ## Restoring a Volume
 
 See [docs/restore-runbook.md](docs/restore-runbook.md) for the full restore runbook, including volume-specific notes and post-restore verification steps.
