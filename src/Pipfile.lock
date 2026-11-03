@@ -450,12 +450,12 @@
         },
         "deprecated": {
             "hashes": [
-                "sha256:16850204d3a1e6bb0acd06bff48d96e8b0a0d25d1c52f71705405a0f4894192d",
-                "sha256:58204cf4a7f6270d547af5c278ee7a6bb56045a4b3d8441a1cd11660f41b7939"
+                "sha256:2f5a9fecc9961e26462846cf1e57f73a612b1d0b79c27dceeed8de647beadcee",
+                "sha256:eda314c115e8bc0fe52b90a6869e19240ac3cedb7449adfdba5981cf9ef693e1"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.12'",
-            "version": "==3.0.0"
+            "version": "==3.0.1"
         },
         "fabric": {
             "hashes": [
@@ -927,7 +927,6 @@
                 "sha256:fa642d3781c061579cb138773add4a55b16f99de9ebc41603e89a756cf9e62c6",
                 "sha256:fabc60720d1e4a36bbe8aaf1c32024f04c6674991313f5acaca5eeadb564c600"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==2.5.2"
         }
