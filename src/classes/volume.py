@@ -17,9 +17,9 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "script
 	PAUSED_CAPTURE_SCRIPT = paused_capture_script_file.read()
 
 # Upper bound on the paused read; exceeding it unpauses and fails the backup.
-PAUSED_CAPTURE_TIMEOUT = 60
+PAUSED_CAPTURE_TIMEOUT = 180
 # Independent backstop that unpauses even if the capture script is killed outright.
-PAUSED_WATCHDOG_SECONDS = 120
+PAUSED_WATCHDOG_SECONDS = 240
 
 class Volume:
 	def __init__(self, host, rawjson):
